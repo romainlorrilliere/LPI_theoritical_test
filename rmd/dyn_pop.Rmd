@@ -1,0 +1,57 @@
+---
+title: "Generate the temporal variation of population abundance"
+author: "Romain Lorrilliere"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+
+```{r source}
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+```
+
+# One population abundance
+
+## Exponential dynamic
+
+We generate the abundance variation of the population following an exponential dynamics. 
+Thus the population abundance at t time N_t is only according to :
+N(t+1) = exp(r) * N(t)
+N0
+
+```{r the_funciton}
+f_recursive_dyn_pop
+```
+```{r parm1}
+r <- 0.05
+N <- 100
+```
+
+For example :
+r = `r r` and N0 = `r N`
+
+```{r dyn1}
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
+
+
+```
+
+
+```{r parm2}
+r <- -0.05
+N <- 100
+```
+
+or another example :
+r = `r r` and N0 = `r N`
+
+```{r dyn2}
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
+
+
+```
+
+
