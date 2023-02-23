@@ -54,4 +54,37 @@ l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
 
 ```
 
+Then we add temporal variability in the r parameter.
 
+
+
+```{r parm3}
+r <- 0.05
+r_var <- 0.1
+N <- 100
+```
+
+For example :
+r in N(mean=`r r`,sd = `r r_var`) and N0 = `r N`
+
+```{r dyn3}
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,fig="print")
+
+
+```
+
+
+```{r parm4}
+r <- -0.05
+r_var <- 0.1
+N <- 100
+```
+
+or another example :
+r in N(mean=`r r`,sd = `r r_var`) and N0 = `r N`
+
+```{r dyn4}
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,fig="print")
+
+
+```
