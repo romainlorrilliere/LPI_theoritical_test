@@ -81,9 +81,10 @@ f_make_pop_dyn <- function(N0_mean=100, N0_var = 0,r_mean = 0.01,r_init_var = 0,
 ##' @author
 f_recursive_dyn_pop <- function(l,r_temp_var,t=2) {
     l$r[t,] <- ifelse(l$N[t-1,] >2,rnorm(ncol(l$r),l$r[1,],r_temp_var),0)
-  #  l$N[t,] <- rpois(ncol(l$N),l$N[t-1,]+ l$N[t-1,] * l$r[t,])
+  ##  l$N[t,] <- rpois(ncol(l$N),l$N[t-1,]+ l$N[t-1,] * l$r[t,])
 
-    l$N[t,] <- rpois(ncol(l$N),exp(l$r[t,]) * l$N[t-1,])
+  ##  l$N[t,] <- rpois(ncol(l$N),exp(l$r[t,]) * l$N[t-1,])
+     l$N[t,] <- round(exp(l$r[t,]) * l$N[t-1,])
 
     if(t == nrow(l$N)) return(l) else t  <-  f_recursive_dyn_pop(l,r_temp_var,t+1)
 }
