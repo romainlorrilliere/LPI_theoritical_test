@@ -17,7 +17,7 @@ source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
 
 ## Exponential dynamic
 
-We generate the abundance variation of the population following an exponential dynamics. 
+We generate the abundance variation of one population following an exponential function. 
 Thus the population abundance at t time N_t is only according to :
 N(t+1) = exp(r) * N(t)
 N0
@@ -28,13 +28,15 @@ f_recursive_dyn_pop
 ```{r parm1}
 r <- 0.05
 N <- 100
+demographic_stocha <- ""
+
 ```
 
 For example :
 r = `r r` and N0 = `r N`
 
 ```{r dyn1}
-l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, demo_var= demographic_stocha, fig="print")
 
 
 ```
@@ -42,17 +44,18 @@ l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
 
 ```{r parm2}
 r <- -0.05
-N <- 100
+
 ```
 
 or another example :
 r = `r r` and N0 = `r N`
 
 ```{r dyn2}
-l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, fig="print")
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r,demo_var= demographic_stocha, fig="print")
 
 
 ```
+## Temporal variability
 
 Then we add temporal variability in the r parameter.
 
@@ -60,15 +63,15 @@ Then we add temporal variability in the r parameter.
 
 ```{r parm3}
 r <- 0.05
-r_var <- 0.1
-N <- 100
+r_var <- 0.025
+
 ```
 
 For example :
 r in N(mean=`r r`,sd = `r r_var`) and N0 = `r N`
 
 ```{r dyn3}
-l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,fig="print")
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,demo_var= demographic_stocha,fig="print")
 
 
 ```
@@ -76,15 +79,59 @@ l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,f
 
 ```{r parm4}
 r <- -0.05
-r_var <- 0.1
-N <- 100
+
+
 ```
 
 or another example :
 r in N(mean=`r r`,sd = `r r_var`) and N0 = `r N`
 
 ```{r dyn4}
-l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,fig="print")
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,demo_var= demographic_stocha,fig="print")
+
+
+```
+
+## Temporal stochasticity
+One could also add a demographic stochasticity process by picking abundance from a Poisson distribution. 
+
+
+
+
+```{r parm5}
+r <- -0.05
+demographic_stocha <- "poisson"
+
+```
+
+with the same paramters:
+r in N(mean=`r r`,sd = `r r_var`) and N0 = `r N`
+
+```{r dyn5}
+l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,demo_var= demographic_stocha,fig="print")
+
+
+```
+
+# Several populations
+
+Finally, we can generate the dynamics of as many populations as necessary
+
+
+```{r parm6}
+r <- -0.05
+N_var <- 10
+r_var0 <- 0.02
+nb_pop <- 5
+```
+
+for example for `r nb_pop` populations:
+
+N0 in N(mean=`r N`,sd = `r N_var`)
+and r in N(mean=N(mean = `r r`,sd = `r r_var0`),sd = `r r_var`) 
+
+```{r dyn6}
+l <- f_make_pop_dyn(nb_pop = nb_pop, N0_mean = N,N0_var = N_var,r_mean = r, r_init_var = r_var0, r_temporal_var = r_var,demo_var= demographic_stocha,fig="print")
 
 
 ```
