@@ -87,7 +87,7 @@ f_recursive_dyn_pop <- function(l,r_temp_var,demo_var = "poisson",t=2) {
     l$r[t,] <- ifelse(l$N[t-1,] >2,rnorm(ncol(l$r),l$r[1,],r_temp_var),0)
 
     if(demo_var == "poisson") l$N[t,] <- rpois(ncol(l$N),exp(l$r[t,]) * l$N[t-1,])
-     else l$N[t,] <- round(exp(l$r[t,]) * l$N[t-1,])
+     else l$N[t,] <- trunc(exp(l$r[t,]) * l$N[t-1,])
 
     if(t == nrow(l$N)) return(l) else t  <-  f_recursive_dyn_pop(l,r_temp_var, demo_var,t+1)
 }
