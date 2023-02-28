@@ -23,11 +23,9 @@ Thus the population abundance at t time N_t is only according to :
 N(t+1) = exp(r) * N(t)
 N0
 
-```{r the_funciton}
-f_recursive_dyn_pop
-```
+
 ```{r parm1}
-r <- -0.005
+r <- -0.01
 r_var <- 0.0025
 N <- 1000
 demographic_stocha <- "poisson"
@@ -35,11 +33,196 @@ demographic_stocha <- "poisson"
 ```
 
 For example :
-r in N(mean=`r r`,sd = `r r_var`)and N0 = `r N` and with demographic stochasticity simulated thanks a pick up in a Poisson distribution. 
+r in =`r r` and N0 = `r N` and with demographic stochasticity simulated thanks a pick up in a Poisson distribution. 
 
 ```{r dyn1}
 l <- f_make_pop_dyn(nb_pop = 1, N0_mean = N,r_mean = r, r_temporal_var = r_var,demo_var= demographic_stocha, fig="print")
 
 
 ```
+## Sampling
 
+### Duration
+
+```{r prepa_sample}
+
+pops <- l$N
+npop <- ncol(pops)
+pops <- reshape2::melt(pops)
+setDT(pops)
+colnames(pops) <- c("year","pop","N")
+
+```
+
+
+```{r sampl_param1}
+start_mean <- 5
+start_var <- 0
+duration_mean <- 10
+duration_var <- 0
+completude_mean <- 1
+completude_var <- 0
+proba_obs_mean <- 1
+proba_obs_var <- 0
+
+```
+
+We model the sampled abundance variation according to a survey that starts in year `r start_mean` for a `r duration_mean` years duration. 
+In this example, the survey is done yearly (completeness = `r completude_mean`), and the abundances recorded are the absolute abundance. 
+
+```{r sampl_dyn1}
+popsamples <- f_samples_pop(pops,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+
+```
+
+### Completness
+
+
+
+```{r sampl_param2}
+completude_mean <- 0.3
+completude_var <- 0
+
+
+```
+
+In other cases, the survey could not be done annually. The completeness of `r completude_mean` suggests that the survey is carried out every third year. 
+
+
+
+```{r sampl_dyn2}
+popsamples <- f_samples_pop(pops,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+
+```
+
+
+
+### Observation probability
+
+
+```{r sampl_param3}
+completude_mean <- 1
+completude_var <- 0
+proba_obs_mean <- 10/N
+proba_obs_var <- 0
+
+```
+
+Finally, most of the surveys on the field do not provide absolute abundance but, more often, relative abundance due to the observation probability lesser than 1.  
+For example, here, the observation probability = `r proba_obs_mean`.
+
+```{r sampl_dyn3}
+popsamples <- f_samples_pop(pops,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+
+```
+
+# Several populations 
+
+## the populations
+
+```{r parm2}
+r <- -0.05
+N_var <- 100
+r_var0 <- 0.02
+nb_pop <- 9
+```
+
+for example for `r nb_pop` populations:
+
+N0 in N(mean=`r N`,sd = `r N_var`)
+and r in N(mean=N(mean = `r r`,sd = `r r_var0`),sd = `r r_var`) 
+
+```{r dyn2}
+l <- f_make_pop_dyn(nb_pop = nb_pop, N0_mean = N,N0_var = N_var,r_mean = r, r_init_var = r_var0, r_temporal_var = r_var,demo_var= demographic_stocha,fig="print")
+
+
+```
+
+
+## Samples
+```{r prepa_sample2}
+
+pops <- l$N
+npop <- ncol(pops)
+pops <- reshape2::melt(pops)
+setDT(pops)
+colnames(pops) <- c("year","pop","N")
+
+```
+
+
+### Same samples
+
+
+```{r sampl_param4}
+start_mean <- 5
+start_var <- 0
+duration_mean <- 10
+duration_var <- 0
+completude_mean <- 1
+completude_var <- 0
+proba_obs_mean <- 1
+proba_obs_var <- 0
+
+```
+
+We could simulate the data provide by a same protocole.  
+
+```{r sampl_dyn4}
+popsamples <- f_samples_pop(pops,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+
+```
+
+
+### Different samples
+
+
+
+```{r sampl_param5}
+start_mean <- 5
+start_var <- 5
+duration_mean <- 10
+duration_var <- 10
+completude_mean <- 0.5
+completude_var <- 0.5
+proba_obs_mean <- 0.05
+proba_obs_var <- 0.05
+
+```
+
+Finally, all populations are surveyed by an indepent and unique protocole. for all survey the paramters randimezed according to : 
+
+- year of start = N(mean=`r start_mean`, sd= `r start_var`)
+- duration of survey = N(mean=`r duration_mean`, sd= `r duration_var`)
+- completness = N(mean=`r completude_mean`, sd= `r completude_var`) only value between 0 and 1.
+- probability of observation = N(mean=`r proba_obs_mean`, sd= `r proba_obs_var`)only value between 0 and 1.
+
+```{r sampl_dyn5}
+popsamples <- f_samples_pop(pops,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+
+```
