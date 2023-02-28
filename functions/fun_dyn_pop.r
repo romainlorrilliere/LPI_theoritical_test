@@ -56,9 +56,10 @@ f_make_pop_dyn <- function(N0_mean=100, N0_var = 0,r_mean = 0.01,r_init_var = 0,
 
         gg_pops[,pop := as.factor(pop)]
         if(length(levels(gg_pops[,pop]))> 10) gg_pops[,pop := as.numeric(pop)]
-        gg <- ggplot(data = gg_pops,mapping=aes(x=year,y=val,colour=pop,group=pop))
-        gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
+        gg <- ggplot(data = gg_pops,mapping=aes(x=year,y=val,colour=pop,group=pop,shape = (val==0)))
+     ##   gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
         gg <- gg + geom_point() + geom_line()
+        gg <- gg + scale_shape_manual(values=c(19,21))
         gg <- gg + facet_grid(var~.,scales="free_y")
 
         if(fig %in% c("save","both")) {
