@@ -60,14 +60,15 @@ f_samples_pop <- function(pops,
 
         xmin <- max(0,min(gg_samples[var=="Nobs",year])-2)
         xmax <- min(yearmax,max(gg_samples[var=="Nobs",year])+2)
+        gg_samples <- gg_samples[year >= xmin-2 & year <= xmax+2,]
         gg_samples[,pop := as.factor(pop)]
         if(length(levels(gg_samples[,pop]))> 10) gg_samples[,pop := as.numeric(pop)]
         gg <- ggplot(data= gg_samples,mapping=aes(x=year,y=N,group=pop,colour = pop,shape = (N==0)))
         gg <- gg + facet_grid(var~.,scales="free_y")
-        gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
+       ## gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
         gg <- gg + geom_line(size=1,alpha=0.7)+ geom_point(fill = "white", size=2,alpha=0.9)
     ##    gg <- gg + geom_point(data = gg_samples[N==0,],colour="white",size=0.8)
-        gg <- gg + xlim(c(xmin,xmax))
+        gg <- gg + coord_cartesian(xlim = c(xmin, xmax))
         gg <- gg + scale_shape_manual(values=c(19,21))
 
         if(fig %in% c("save","both")) {
