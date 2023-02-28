@@ -82,3 +82,4 @@ analysis/movebank_ind.csv
 *.txt#
 *.txt~
 test.r
+*Rproj
