@@ -1,0 +1,255 @@
+---
+title: "Generate the temporal variation of population abundance with discret population growth and carrying capacity"
+author: "Romain Lorrilliere"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+
+```{r source}
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+```
+
+# Several model
+
+## Logistic
+
+![logistic equation](img/logistic.png)
+
+```{r logisitic}
+
+logistic
+
+```
+
+
+## Ricker (1968)
+![logistic equation](img/ricker.png)
+ 
+ 
+ r is interpreted as an intrinsic growth rate and k as the carrying capacity 
+ 
+ ```{r ricker}
+
+ricker
+
+```
+ 
+## Beverton Holt (1993)
+
+![logistic equation](img/beverton_holt.png)
+
+
+Here R is interpreted as the proliferation rate per generation
+
+```{r beverton}
+
+beverton_holt
+
+```
+
+# Without demographic stochasticity
+
+
+```{r fig.width = 10}
+library(data.table)
+library(ggplot2)
+
+K <- rep(c(10,25,100),6)
+r <- rep(c(0.9,1,1.1,1.25,2,3),each=3)
+N_mean <- K / 2
+N_sd <- 0
+npop <- length(K)
+demographic_stocha <- ""
+nbyear <- 30
+r_var <- 0
+r_tempvar <- 0
+
+model_dyn  <- "beverton_holt"
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops <- reshape2::melt(l[[i]])
+            setDT(gg_pops)
+            colnames(gg_pops) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops <- merge(gg_pops,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops[,model := model_dyn]
+
+
+r <- rep(c(-0.1,0,0.1,.25,1,2),each=3)
+model_dyn  <- "logistic"
+
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops2 <- reshape2::melt(l[[i]])
+            setDT(gg_pops2)
+            colnames(gg_pops2) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops2 <- merge(gg_pops2,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops2[,model := model_dyn]
+gg_pops2[,r := r + 1]
+
+gg_pops <- rbind(gg_pops,gg_pops2)
+
+
+
+model_dyn  <- "ricker"
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops2 <- reshape2::melt(l[[i]])
+            setDT(gg_pops2)
+            colnames(gg_pops2) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops2 <- merge(gg_pops2,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops2[,model := model_dyn]
+gg_pops2[,r := r + 1]
+
+gg_pops <- rbind(gg_pops,gg_pops2)
+
+
+gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r,scales="free")
+gg <- gg  + geom_line(alpha = .5,size = 1.1)
+ggsave("output/dyn_logistic_models_without_stocha.png",width = 12,height=8)
+gg
+
+```
+
+
+
+
+
+
+# With demographic stochasticity
+
+
+```{r fig.width = 10}
+library(data.table)
+library(ggplot2)
+
+K <- rep(c(10,25,100),6)
+r <- rep(c(0.9,1,1.1,1.25,2,3),each=3)
+N_mean <- K / 2
+N_sd <- 0
+npop <- length(K)
+demographic_stocha <- "poisson"
+nbyear <- 30
+r_var <- 0
+r_tempvar <- 0
+
+model_dyn  <- "beverton_holt"
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops <- reshape2::melt(l[[i]])
+            setDT(gg_pops)
+            colnames(gg_pops) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops <- merge(gg_pops,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops[,model := model_dyn]
+
+
+r <- rep(c(-0.1,0,0.1,.25,1,2),each=3)
+model_dyn  <- "logistic"
+
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops2 <- reshape2::melt(l[[i]])
+            setDT(gg_pops2)
+            colnames(gg_pops2) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops2 <- merge(gg_pops2,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops2[,model := model_dyn]
+gg_pops2[,r := r + 1]
+
+gg_pops <- rbind(gg_pops,gg_pops2)
+
+
+
+model_dyn  <- "ricker"
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+i <- 1
+gg_pops2 <- reshape2::melt(l[[i]])
+            setDT(gg_pops2)
+            colnames(gg_pops2) <- c("year","pop",names(l)[i])
+
+        for(i in 2:length(l)) {
+
+            gg_pops_i <- reshape2::melt(l[[i]])
+            setDT(gg_pops_i)
+            colnames(gg_pops_i) <- c("year","pop",names(l)[i])
+
+
+            gg_pops2 <- merge(gg_pops2,gg_pops_i,by=c("year","pop"))
+        }
+
+setDT(gg_pops)
+gg_pops2[,model := model_dyn]
+gg_pops2[,r := r + 1]
+
+gg_pops <- rbind(gg_pops,gg_pops2)
+
+
+gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r,scales="free")
+gg <- gg  + geom_line(alpha = .5,size = 1.1)
+ggsave("output/dyn_logistic_models_with_stocha.png",width = 12,height=8)
+gg
+
+```
