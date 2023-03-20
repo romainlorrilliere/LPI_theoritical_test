@@ -32,6 +32,7 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
     pops_r <-  array(rnorm(nb_year * nb_pop,rep(r0,each=nb_year),rep(rvar,each=nb_year)),dim=c(nb_year,nb_pop))
     pops_r[1,] <- r0
     pops_r <- round(pops_r,4)
+    if(model_name != "ricker") pops_r[pops_r < 0]  <-  0
 
     if(K_method == "exact"){
         pops_K <-  array(rep(K,each=nb_year),dim=c(nb_year,nb_pop))
