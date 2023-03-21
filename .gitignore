@@ -83,3 +83,4 @@ analysis/movebank_ind.csv
 *.txt~
 test.r
 *Rproj
+_script/LPI-calcul_jbm.R
