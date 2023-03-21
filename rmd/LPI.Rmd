@@ -1,0 +1,244 @@
+---
+title: "LPI assessment"
+author: "Romain Lorrilliere"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+
+```{r source}
+library(data.table)
+library(ggplot2)
+library(ggeffects)
+
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+source("c:/git/LPI_theoritical_test/functions/fun_samples.r")
+
+```
+
+# Population dynamic simulation
+
+To start we simulate the abundance variation of 6 population from 2 species. One is an increasing species when the second is a declining one. 
+To simulate the abundance variation of these population we use a Beverton and Holt model and we do not add a demographic stochasticity. 
+
+```{r dyn, echo=TRUE}
+K <- rep(100,3)
+r <- 1.1
+N_mean <- K / 2
+N_sd <- 0
+npop <- length(K)
+demographic_stocha <- "trunc"
+nbyear <- 30
+r_var <- 0
+r_tempvar <- .05
+
+model_dyn  <- "beverton_holt"
+l1 <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+
+
+pop1 <- l1$N
+d_pop1 <- melt(pop1)
+colnames(d_pop1) <- c("year","pop","N")
+setDT(d_pop1)
+d_pop1[,sp := "sp1"]
+d_pop1[,pop := as.factor(paste0(sp,"_",pop))]
+
+
+
+
+
+r <- 0.98
+r_var <- 0.001
+r_tempvar <- .1
+
+l2 <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+
+pop2 <- l2$N
+d_pop2 <- melt(pop2)
+colnames(d_pop2) <- c("year","pop","N")
+setDT(d_pop2)
+d_pop2[,sp := "sp2"]
+d_pop2[,pop := as.factor(paste0(sp,"_",pop))]
+
+
+d_pop <- rbind(d_pop1,d_pop2)
+
+gg <- ggplot(d_pop,aes(x=year,y=N,group=pop,colour=pop)) + geom_point()+geom_line()
+print(gg)
+
+```
+# Sampling
+
+The we simulate a sampling process on these population
+
+
+```{r sample, echo=TRUE}
+start_mean <- 2
+start_var <- 5
+duration_mean <- 20
+duration_var <- 10
+completude_mean <- 0.3
+completude_var <- 0.5
+proba_obs_mean <- 0.5
+proba_obs_var <- 0.1
+
+popsamples <- f_samples_pop(d_pop,start_mean, start_var,
+                           duration_mean, duration_var,
+                           completude_mean, completude_var ,
+                           proba_obs_mean , proba_obs_var,
+                           fig = "print")
+
+```
+# LPI assessment
+
+We use the methodology describe by Collen et al. (2009)
+
+Collen, Ben, Jonathan Loh, Sarah Whitmee, Louise McRae, Rajan Amin, et Jonathan E. M. Baillie. « Monitoring Change in Vertebrate Abundance: The Living Planet Index ». Conservation Biology 23, nᵒ 2 (2009): 317‑27. https://www.jstor.org/stable/29738731.
+
+
+## Replacement of the zero
+
+One percent of the mean population measure value for the whole time series was added to all years in time series for which TV was zero in any year.
+
+```{r one_percent, echo=TRUE}
+
+popsamples[, one_percent := .01* mean(Nobs,na.rm=TRUE),by=pop]
+
+popsamples[,Nobs := as.numeric(Nobs)]
+popsamples[Nobs == 0, Nobs := one_percent]
+
+``` 
+
+## Interpolation
+
+Missing values are imputed with log-linear interpolation
+
+![interpolation](img/Collen_interpolation.png)
+
+```{r interpolation, echo=TRUE}
+
+sample_prev <- popsamples[,.(pop,year,Nobs)]
+sample_prev[,year := year + 1]
+setnames(sample_prev,"Nobs","Nobs_prev")
+
+popsamples <- merge(popsamples,sample_prev,by=c("pop","year"),all.x=TRUE)
+setorder(popsamples,pop,year)
+
+
+popsamples[,group := cumsum(!as.numeric(is.na(Nobs) & is.na(Nobs_prev))) ,by = pop]
+
+
+group_prev <- popsamples[,.(pop,group,Nobs,year)]
+group_prev[,year := max(year),by=.(pop,group)]
+group_prev[,group := group + 1]
+setnames(group_prev,c("Nobs","year"),c("Nobs_prev_group","year_prev"))
+group_prev <- unique(group_prev)
+
+group_post <- popsamples[,.(pop,group,Nobs,year)]
+group_post[,year := min(year),by=.(pop,group)]
+group_post[,group := group - 1]
+setnames(group_post,c("Nobs","year"),c("Nobs_post_group","year_post"))
+group_post <- unique(group_post)
+
+popsamples <- merge(popsamples,group_prev,by=c("pop","group"),all.x = TRUE)
+popsamples <- merge(popsamples,group_post,by=c("pop","group"),all.x = TRUE)
+
+interpoLPI <- function (i,Np,Ns,p,s)Np * (Ns/Np)^((i -p)/(s-p))
+
+
+popsamples[,Nobs_LPI := ifelse(is.na(Nobs),interpoLPI(i=year,Np = Nobs_prev_group,Ns = Nobs_post_group,p = year_prev,s = year_post), Nobs)]
+popsamples[,modification:=ifelse(is.na(Nobs) & !is.na(Nobs_LPI), "interpolated",ifelse(Nobs_LPI == one_percent,"one percent","no"))]
+
+
+```
+
+## Species index
+
+the species index for the species with less than 6 population (if I understood correctly) is assessed with a chain method as follow: 
+
+The index value (I_t) was calculated in year : 
+
+![i](img/Collen_i.png)
+ 
+where d is aggreagted by species with a arithmetic mean 
+ 
+![dmean](img/Collen_dmean.png)
+
+and d a logarithm of the ratio of two successive years. 
+ 
+![d](img/Collen_d.png)
+
+r is interpreted as an intrinsic growth rate and k as the carrying capacity 
+ 
+```{r i, echo=TRUE}
+## assess d
+
+N_prev <- popsamples[,.(pop,year,Nobs_LPI)]
+N_prev[,year := year + 1]
+setnames(N_prev,"Nobs_LPI","Nprev")
+popsamples <- merge(popsamples,N_prev,by=c("pop","year"))
+popsamples[,d := log(Nobs_LPI/Nprev)]
+
+
+## species aggregation
+
+sp_samples <- popsamples[,.(d = mean(d,na.rm=TRUE)),by = .(sp,year)]
+
+
+## assess index value
+
+## source("functions/index_value.cpp")
+
+sp_samples[,i := 10^(cumsum(d)),by=sp]
+
+
+```
+
+
+## LPI
+
+Finally the temporal variation of the LPI, is the yearly geometric mean. 
+ 
+```{r LPI, echo = TRUE}
+
+lpi <- sp_samples[!is.na(i),.(value = exp(mean(log(i)))),by=year]
+
+
+```
+
+
+
+# Plot
+
+```{r plot}
+
+
+gg1 <- melt(popsamples[,.(pop,sp,year,modification,N,Nobs_LPI)],id.vars = c("pop","sp","year","modification"), mesure.vars = c("N","Nobs_LPI"))
+setDT(gg1)
+gg1[variable == "N", modification := "no"]
+gg2 <- melt(sp_samples[,.(year,sp,d,i)],id.vars = c("sp","year"),nesure.vars = c("d","i"))
+setDT(gg2)
+gg2[,`:=`(pop = paste0(sp,"_all"),modification = "no" )]
+setcolorder(gg2,colnames(gg1))
+gg3 <- lpi
+gg3[,`:=`(pop = "all",sp="all",modification = "no",variable = "LPI" )]
+setcolorder(gg3,colnames(gg1))
+
+
+gg_samples <- rbind(rbind(gg1,gg2),gg3)
+gg_samples <- gg_samples[!is.na(value),]
+
+
+vecshape = c("no" = 19,"interpolated" = 21 , "one percent" = 25 )
+gg <- ggplot(gg_samples,aes(x=year,y=value,colour=sp,group=pop,shape=modification)) + facet_grid(variable~.,scales = "free_y")
+gg <- gg+ geom_line() + geom_point(fill = "white",size=2) 
+gg <- gg + scale_shape_manual(values = vecshape)
+gg
+
+
+
+```
