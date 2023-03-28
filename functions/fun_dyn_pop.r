@@ -6,6 +6,76 @@
 
 
 
+
+f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print",save_data=TRUE) {
+
+    require(reshape2)
+    require(data.table)
+
+    for(sp in 1:nb_sp){
+        if(is.list(N0_mean)) N0_mean_sp  <-  N0_mean[[sp]] else N0_mean_sp <- N0_mean
+        if(is.list(N0_var)) N0_var_sp  <-  N0_var[[sp]] else N0_var_sp <- N0_var
+        if(is.list(K)) K_sp <- K[[sp]] else K_sp  <- K
+        if(is.list(K_method)) K_method_sp <- K_method[[sp]] else K_method_sp  <- K_method
+        if(is.list(r_mean)) r_mean_sp <- r_mean[[sp]] else r_mean_sp  <- r_mean
+        if(is.list(r_init_var)) r_init_var_sp <- r_init_var[[sp]] else r_init_var_sp  <- r_init_var
+       if(is.list(r_temporal_var_mean)) r_temporal_var_mean_sp <- r_temporal_var_mean[[sp]] else r_temporal_var_mean_sp  <- r_temporal_var_mean
+        if(is.list(nb_pop)) nb_pop_sp <- nb_pop[[sp]] else nb_pop_sp  <- nb_pop
+        if(is.list(nb_year)) nb_year_sp <- nb_year[[sp]] else nb_year_sp  <- nb_year
+        if(is.list(model_name)) model_name_sp <- model_name[[sp]] else model_name_sp  <- model_name
+        if(is.list(demographic_stocha)) demographic_stocha_sp <- demographic_stocha[[sp]] else demographic_stocha_sp  <- demographic_stocha
+
+
+        l_sp <-  f_make_pop_dyn(nb_pop = nb_pop_sp, N0_mean = N0_mean_sp,N0_var = N0_var_sp,K=K_sp,K_method=K_method_sp,r_mean = r_mean_sp, r_init_var = r_init_var_sp,r_temporal_var_mean = r_temporal_var_mean_sp,nb_year = nb_year_sp,model_name = model_name_sp,demographic_stocha = demographic_stocha_sp, fig="")
+
+        pop_sp <- l_sp$N
+        d_pop_sp <- melt(pop_sp)
+        colnames(d_pop_sp) <- c("year","pop","N")
+        setDT(d_pop_sp)
+        d_pop_sp[,sp := paste0("sp",sp)]
+        d_pop_sp[,pop := as.factor(paste0(sp,"_",pop))]
+
+
+        if(sp == 1) d_pop <- d_pop_sp else d_pop <- rbind(d_pop,d_pop_sp)
+
+
+}
+
+    if(fig %in% c("save","print","both")) {
+
+        require(reshape2)
+        require(data.table)
+        require(ggplot2)
+
+
+
+        if(nb_sp> 10) d_pop[,sp := as.numeric(sp)]
+        gg <- ggplot(data = d_pop,mapping=aes(x=year,y=N,colour=sp,group=pop,shape = (N==0)))
+     ##   gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
+        gg <- gg + geom_point() + geom_line()
+        gg <- gg + scale_shape_manual(values=c(19,21))
+
+        if(fig %in% c("save","both")) {
+            gg_file <- paste0("output/dyn_sps",format(Sys.time(),'_%Y%m%d_%H%M%S'),".png")
+            ggsave(gg_file,gg)
+        }
+        if(fig %in% c("print","both") )
+            print(gg)
+
+    }
+
+
+    if(save_data) fwrite(d_pop,paste0("output/dyn_sps",format(Sys.time(),'_%Y%m%d_%H%M%S'),".csv"))
+    return(d_pop)
+
+
+
+
+}
+
+
+
+
 ##
 ##' .. content for \description{} (no empty lines) ..
 ##'
@@ -13,18 +83,19 @@
 ##' @title f_make_pop_dyn function to produce population temporal series according to several paramters
 ##' @param N0_mean [num] mean of initial abundance
 ##' @param N0_var [num] variance of initial abundance
+##' @param K [num] carryinf capacity
+##' @param K_method ["runif"] if the K should be picked in uniform distribution between K/10 and K
 ##' @param r_mean [num] mean of replacement rate
-##' @param r_init_var [num] initial variance of replacement rate
-##' @param r_temporal_var [num] temporal variance of replacement rate
-##' @param K_mean [num] mean of initial carrying capacity
-##' @param K_init_var [num] initial variance of the carryng capacity
+##' @param r_init_var [num] initial between population variance of replacement rate
+##' @param r_temporal_var_mean [num] temporal variance of remplacement rate
 ##' @param nb_pop [num] number of population
 ##' @param nb_year [num] number of years of the temporal series
+##' @param model_name [string %in% "beverton_holt","ricker","logistic"] name of the function used to simulate the population dynamics
+##' @param demographic_stocha [string in "poisson", "round","none"] method to modelling the demographic stochasticity
 ##' @param fig ["print","save","both", ""] choose if you want produce a figure and if you want print it, save it or both.
-##' @param demo_var ["poisson", ""] method to modelling the demographic stochasticity
 ##' @return a list with the populations abundance and their paramter that change in time.
 ##' @author Romain Lorrilliere
-f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",stocha_demo = "poisson", fig = "print") {
+f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print") {
 
 
     r0 <- rnorm(nb_pop,r_mean,r_init_var)
@@ -32,15 +103,15 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
     pops_r <-  array(rnorm(nb_year * nb_pop,rep(r0,each=nb_year),rep(rvar,each=nb_year)),dim=c(nb_year,nb_pop))
     pops_r[1,] <- r0
     pops_r <- round(pops_r,4)
-    if(model_name != "ricker") pops_r[pops_r < 0]  <-  0
+    if(model_name == "beverton_holt") pops_r[pops_r < 0]  <-  0
 
-    if(K_method == "exact"){
-        pops_K <-  array(rep(K,each=nb_year),dim=c(nb_year,nb_pop))
-    } else{
-        pops_Inf <- array(rep(ifelse(K != Inf,0,Inf),each=nb_year),dim=c(nb_year,nb_pop))
+    if(K_method == "runif"){
+      pops_Inf <- array(rep(ifelse(K != Inf,0,Inf),each=nb_year),dim=c(nb_year,nb_pop))
         K[K == Inf] <- 99999
         pops_K  <- array(rep(round(runif(nb_pop,K/10,K)),each=nb_year),dim=c(nb_year,nb_pop))
         pops_K <- pops_K + pops_Inf
+    } else{
+          pops_K <-  array(rep(K,each=nb_year),dim=c(nb_year,nb_pop))
     }
 
     if(is.null(N0_mean) & all(K != Inf))
@@ -52,7 +123,7 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
 
     l_pops <- list(N=pops_N,r=pops_r,K = pops_K)
 
-    l_pops <- f_recursive_dyn_pop(l_pops,model_name,stocha_demo)
+    l_pops <- f_recursive_dyn_pop(l_pops,model_name,demographic_stocha)
 
     if(fig %in% c("save","print","both")) {
 
@@ -92,65 +163,39 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
 }
 
 
+
+
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
 ##' @title f_recursive_dyn_pop recursive function to generate the temporal variation of abundance of population according to paramters
 ##' @param l the list with the abundance and the parameters
 ##' @param r_temp_var
-##' @param demo_var ["poisson", ""] method to modelling the demographic stochasticity
+##' @param demographic_stocha ["poisson", "round","none"] method to modelling the demographic stochasticity
 ##' @param t starting time
 ##' @return
-##' @author
-f_recursive_dyn_pop_2 <- function(l,r_temp_var,demo_var = "poisson",t=2) {
-    l$r[t,] <- ifelse(l$N[t-1,] >2,rnorm(ncol(l$r),l$r[1,],r_temp_var),0)
+##' @author Romain Lorrilliere
+f_recursive_dyn_pop <- function(l,model_name = "ricker",demographic_stocha = "poisson",t=2) {
 
-    if(demo_var == "poisson") l$N[t,] <- rpois(ncol(l$N),exp(l$r[t,]) * l$N[t-1,])
-     else l$N[t,] <- trunc(exp(l$r[t,]) * l$N[t-1,])
-
-    if(t == nrow(l$N)) return(l) else t  <-  f_recursive_dyn_pop(l,r_temp_var, demo_var,t+1)
-}
-
-
-
-f_recursive_dyn_pop <- function(l,model_name = "ricker",demo_var = "poisson",t=2) {
-
+    ## solution de debogage pour les cas ou r déclin et N > K 
+  if(model_name == "beverton_holt") l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]-1)+1,l$r[t,]) else l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]),l$r[t,])
+    
   l$N[t,] <-  do.call(model_name,list(r = l$r[t,],K = l$K[t,],N=l$N[t-1,]))
-
-    if(demo_var == "poisson") l$N[t,] <- rpois(ncol(l$N),l$N[t,])
-    else if(demo_var == "real")l$N[t,] <-l$N[t,]
-    else l$N[t,] <- trunc(l$N[t,])
-
-    if(t == nrow(l$N)) return(l) else l  <-  f_recursive_dyn_pop(l,model_name, demo_var,t+1)
+  l$N[t,] <- ifelse(l$N[t,] < 0 , 0, l$N[t,])
+  
+    if(demographic_stocha == "poisson") l$N[t,] <- rpois(ncol(l$N),l$N[t,])
+    else if(demographic_stocha == "round") l$N[t,] <- round(l$N[t,])
+    else if(demographic_stocha == "none")l$N[t,] <-l$N[t,]
+#if(t%in% 3:6 & model_name == "logistic") browser()
+    
+    if(t == nrow(l$N)) return(l) else l  <-  f_recursive_dyn_pop(l,model_name,demographic_stocha,t+1)
 }
 
 
-
-
-f_loop_dyn_pop <- function(N0,r,K,nb_t = 10,model_name = "ricker",demo_var="poisson",fig=TRUE) {
-
-    vecN <- rep(NA,nb_t)
-    vecN[1] <- N0
-
-    for(t in 2:nb_t) {
-        vecN[t] <-  do.call(model_name,list(r =r,K = K,N=vecN[t-1]))
-        if(demo_var == "poisson") vecN[t] <- rpois(1,vecN[t])
-        else if(demo_var == "real") vecN[t] <- rpois(1,vecN[t])
-        else vecN[t] <- trunc(vecN[t])
-    }
-
-    if(fig) {
-        require(ggplot2)
-        vecN <- data.frame(year = 1:nb_t,N=vecN)
-        gg <- ggplot(vecN,aes(x=year,y=N))+ geom_line()+ geom_point()
-        print(gg)
-    }
-
-}
 
 
 # r proliferation rate
-beverton_holt <- function(N,r,K) return((r*N)/(1+((r-1)/K)*N))
+beverton_holt <- function(N,r,K) return((r*N)/(1+(N*(r-1)/K)))
 # r intrinsic growth rate
 ricker <- function(N,r,K)  return(N*exp(r*(1-N/K)))
 
