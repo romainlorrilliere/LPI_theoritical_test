@@ -86,4 +86,4 @@ test.r
 *Rproj
 _script/LPI-calcul_jbm.R
 *.html
-*.html
+rmd/dyn_pop_K.html
