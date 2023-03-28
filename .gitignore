@@ -16,6 +16,7 @@ export/
 data_various/
 talk/
 lpi_temp/
+functions_archive/
 
 .Rproj.user
 .Rhistory
@@ -84,3 +85,4 @@ analysis/movebank_ind.csv
 test.r
 *Rproj
 _script/LPI-calcul_jbm.R
+*.html
