@@ -9,6 +9,7 @@ f_samples_pop <- function(pops,
     ## completude_var <- 0.5;proba_obs_mean <- 0.5;proba_obs_var <- 0.2
 
     yearmax <- max(pops[,year])
+    npop <- length(unique(pops$pop))
     start_sample <- round(rnorm(npop,start_mean,start_var))
     start_sample[start_sample<0] <- 0
     start_sample[start_sample > yearmax] <- yearmax
@@ -38,7 +39,7 @@ f_samples_pop <- function(pops,
     pops[,`:=`(sample = ifelse(year == start_sample | year == end_sample,1,
                         ifelse(year > start_sample & year < end_sample,
                                rbinom(nrow(pops),1,completude),0))
-             , Nobs = rbinom(nrow(pops),N,proba_obs))]
+             , Nobs = ifelse(proba_obs == 1 ,N,rbinom(nrow(pops),N,proba_obs)))]
     pops[sample == 0, Nobs:= NA]
 
     if(fig %in% c("save","print","both")) {
