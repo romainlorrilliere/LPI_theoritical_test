@@ -63,13 +63,13 @@ r <- rep(c(0.9,1,1.1,1.25,2,3),each=3)
 N_mean <- K / 2
 N_sd <- 0
 npop <- length(K)
-demographic_stocha <- ""
+demographic_stocha <- "none"
 nbyear <- 30
 r_var <- 0
 r_tempvar <- 0
 
 model_dyn  <- "beverton_holt"
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops <- reshape2::melt(l[[i]])
@@ -93,7 +93,7 @@ gg_pops[,model := model_dyn]
 r <- rep(c(-0.1,0,0.1,.25,1,2),each=3)
 model_dyn  <- "logistic"
 
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops2 <- reshape2::melt(l[[i]])
@@ -119,7 +119,7 @@ gg_pops <- rbind(gg_pops,gg_pops2)
 
 
 model_dyn  <- "ricker"
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops2 <- reshape2::melt(l[[i]])
@@ -162,6 +162,8 @@ gg
 library(data.table)
 library(ggplot2)
 
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+
 K <- rep(c(10,25,100),6)
 r <- rep(c(0.9,1,1.1,1.25,2,3),each=3)
 N_mean <- K / 2
@@ -173,7 +175,7 @@ r_var <- 0
 r_tempvar <- 0
 
 model_dyn  <- "beverton_holt"
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops <- reshape2::melt(l[[i]])
@@ -197,7 +199,7 @@ gg_pops[,model := model_dyn]
 r <- rep(c(-0.1,0,0.1,.25,1,2),each=3)
 model_dyn  <- "logistic"
 
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops2 <- reshape2::melt(l[[i]])
@@ -223,7 +225,7 @@ gg_pops <- rbind(gg_pops,gg_pops2)
 
 
 model_dyn  <- "ricker"
-l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,stocha_demo = demographic_stocha, fig="")
+l <- f_make_pop_dyn(nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
 i <- 1
 gg_pops2 <- reshape2::melt(l[[i]])
@@ -253,3 +255,145 @@ ggsave("output/dyn_logistic_models_with_stocha.png",width = 12,height=8)
 gg
 
 ```
+
+
+# Demographic stochasticity or not ? 
+
+Here I test the effect on the simulated dynamic to add a stochastic process according to a Poisson distribution or a predicted abundance rounded or keeping the predicted abundances (as a float number). 
+
+```{r dyn2}
+
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+
+N_sd <- 0
+npop <- list(1,1,1000,1000)
+demographic_stocha <- list("none","round","poisson","round")
+nbyear <- 50
+r_var <- 0
+r_tempvar <- list(0,0,0,0.1)
+nb_sp <- 4
+
+tab_param <- expand.grid(K = c(10,100,1000),r = c(-0.1,0,0.1),model_dyn = c("beverton_holt","logistic"))
+for (i in 1: nrow(tab_param)){
+  
+  K <- tab_param$K[i]
+  model_dyn  <- as.character(tab_param$model_dyn[i])
+  r <- tab_param$r[i]
+
+  if(r == 0)N_mean <- 0.5*K
+  if(r > 0)N_mean <- 0.25*K
+  if(r < 0)N_mean <- 0.75*K
+  
+    if(model_dyn == "beverton_holt")
+    r <- r + 1 
+  
+  d_pop_i  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
+
+  setDT(d_pop_i)
+  d_pop_i[,`:=`(model_dyn = model_dyn,K=K,r=r,N0=N_mean,demographic_stocha = ifelse(sp == "sp1","none",
+                                                                                    ifelse(sp=="sp2","round",
+                                                                                           ifelse(sp =="sp3","Poisson","round_r_0.1"))))]
+  
+  if(i == 1) d_pop <- d_pop_i else d_pop <- rbind(d_pop,d_pop_i)
+
+  
+}
+
+d_pop[model_dyn == "beverton_holt",r := r -1]
+d_pop[is.na(N),N:= 0]
+d_pop[,groups := paste0(model_dyn,"_",demographic_stocha,"_",pop)]
+d_pop[,demographic_stocha := factor(demographic_stocha,levels=c("Poisson","round","none","round_r_0.1"))]
+setorder(d_pop,demographic_stocha)
+
+d_pop_agg <- d_pop[,.(Nmin = min(N),IC95inf = quantile(N,0.025),IC50inf = quantile(N,0.25),N = median(N),IC50sup = quantile(N,0.75), IC95sup = quantile(N,.975),Nmax = max(N)),by=.(K,r,model_dyn,demographic_stocha,sp,year)]
+d_pop_agg[,`:=`(demographic_stocha = factor(demographic_stocha,levels=c("Poisson","round","none","round_r_0.1")),year = as.numeric(as.character(year)))]
+
+setorder(d_pop_agg,demographic_stocha)
+
+```
+
+
+
+```{r plot_beverton_holt_1, fig.height=6}
+gg <- ggplot(subset(d_pop,model_dyn == "beverton_holt" ),aes(x=year,y=N,colour = demographic_stocha, fill = demographic_stocha,group = groups)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + geom_line(size = 0.8,alpha = .05) 
+#gg <- ggplot(subset(d_pop,model_dyn == "beverton_holt" ),aes(x=year,y=N,colour = demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + labs(title = "Beverton Holt")
+gg
+
+
+```
+
+```{r plot_beverton_holt_2, fig.height=6}
+
+gg <- ggplot(subset(d_pop_agg,model_dyn == "beverton_holt" ),aes(x=year,y=N,colour = demographic_stocha,fill=demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+#gg <- gg + geom_line(aes(group = pop),alpha=1)
+gg <- gg + geom_ribbon(aes(ymin = IC95inf, ymax=IC95sup),colour = NA,alpha= .5)
+gg <- gg + geom_ribbon(aes(ymin = IC50inf, ymax=IC50sup),size=1.2,fill = NA,alpha= .8,linetype = "dashed")
+gg <- gg + geom_ribbon(aes(ymin = Nmin, ymax=Nmax),size=0.8,fill = NA,alpha= .8,linetype = "dotted")
+
+gg <- gg + geom_line(size=2) 
+gg <- gg + labs(title = "Beverton Holt")
+gg
+
+
+```
+
+```{r plot_beverton_holt, fig.height=5}
+
+gg <- ggplot(subset(d_pop_agg,model_dyn == "beverton_holt" ),aes(x=year,y=N,colour = demographic_stocha, fill = demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + geom_line(size = 1.2,alpha = .8) 
+#gg <- gg + geom_line(aes(group = pop),alpha=1)
+#gg <- gg + geom_ribbon(aes(ymin = ICinf, ymax=ICsup),alpha = 0.4,colour=NA)
+gg <- gg + labs(title = "Beverton Holt")
+print(gg)
+
+
+```
+
+
+
+
+
+
+
+
+```{r plot_logistic_1, fig.height=6}
+gg <- ggplot(subset(d_pop,model_dyn == "logistic" ),aes(x=year,y=N,colour = demographic_stocha, fill = demographic_stocha,group = groups)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + geom_line(size = 0.8,alpha = .05) 
+#gg <- ggplot(subset(d_pop,model_dyn == "logistic" ),aes(x=year,y=N,colour = demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + labs(title = "Logistic")
+gg
+
+
+```
+
+```{r plot_logistic_2, fig.height=6}
+
+gg <- ggplot(subset(d_pop_agg,model_dyn == "logistic" ),aes(x=year,y=N,colour = demographic_stocha,fill=demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+#gg <- gg + geom_line(aes(group = pop),alpha=1)
+gg <- gg + geom_ribbon(aes(ymin = IC95inf, ymax=IC95sup),colour = NA,alpha= .5)
+gg <- gg + geom_ribbon(aes(ymin = IC50inf, ymax=IC50sup),size=1.2,fill = NA,alpha= .8,linetype = "dashed")
+gg <- gg + geom_ribbon(aes(ymin = Nmin, ymax=Nmax),size=0.8,fill = NA,alpha= .8,linetype = "dotted")
+
+gg <- gg + geom_line(size=2) 
+gg <- gg + labs(title = "Logistic")
+gg
+
+
+```
+
+```{r plot_logistic, fig.height=5}
+
+gg <- ggplot(subset(d_pop_agg,model_dyn == "logistic" ),aes(x=year,y=N,colour = demographic_stocha, fill = demographic_stocha)) + facet_grid(K~r,scales = "free_y")
+gg <- gg + geom_line(size = 1.2,alpha = .8) 
+#gg <- gg + geom_line(aes(group = pop),alpha=1)
+#gg <- gg + geom_ribbon(aes(ymin = ICinf, ymax=ICsup),alpha = 0.4,colour=NA)
+gg <- gg + labs(title = "Logistic")
+print(gg)
+
+
+```
+
+
+
