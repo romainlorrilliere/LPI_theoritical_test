@@ -88,3 +88,5 @@ _script/LPI-calcul_jbm.R
 *.html
 rmd/dyn_pop_K.html
 *.html
+*.slurm~
+rmd/dyn_pop_K.html
