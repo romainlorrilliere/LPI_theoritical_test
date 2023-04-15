@@ -1,0 +1,896 @@
+---
+title: "LPI test in simple situations"
+author: "Romain Lorrilliere"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      toc_collapsed: true
+    toc_depth: 3
+    number_sections: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+
+```{r source}
+library(data.table)
+library(ggplot2)
+library(ggeffects)
+
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+source("c:/git/LPI_theoritical_test/functions/fun_samples.r")
+source("c:/git/LPI_theoritical_test/functions/fun_lpi.r")
+
+
+```
+
+# Purpose
+
+## Main scenarios
+
+We start with some simple situations: 
+
+- One species 
+  - One population
+    - Without temporal stochasticity
+    - With temporal stochasticity
+  - Two populations 
+    - With the same value of abundance 
+    - With the independent temporal variance 
+- Two species
+  - One population
+    - Without temporal stochasticity
+    - With temporal stochasticity
+  - Two populations 
+    - With the same value of abundance 
+    - With the independent temporal stochasticity
+
+
+## Generic parameters 
+
+- dynamic model: Beverton
+- number of years: 30 years
+- demographic stochasticity: none, and the raw abundance will be rounded
+- carrying capacity (K): 50, 100 or 500   
+- growth rate (r0): 0.9, 1, 1.1
+- N0: will be a proportion Pk of K in 0.1, 0.5, 0.9
+Hence we model various colonization histories. 
+
+**Parameters**
+
+```{r param1, echo=TRUE}
+v_K <- c(50,100,500)
+v_r0 <- c(-0.1,0,0.1)
+v_N0K <- c(0.10,0.50,0.90)
+
+tab_param <- expand.grid(K = v_K,r=v_r0,N0K = v_N0K)
+setDT(tab_param)
+tab_param[,`:=`(sp = 1:.N, pop = paste0(1:.N,"_",1),N0 = K * N0K)]
+tab_param <- tab_param[,.(sp,pop,K,r,N0,N0K)]
+
+
+```
+
+All combinations between the values of K, r, and N0 give `r nrow(tab_param)` scenarios. 
+
+```{r}
+print(tab_param)
+```
+
+
+
+## Sampling effect
+
+There is no sampling; the data available in this first simple analysis are the whole temporal series. 
+
+## Independente metrics of population dynamics
+
+We will compare the species index of LPI and the LPI with some other metrics
+
+**growth rate**: 
+
+* tx = (Nt -N0) / N0
+* dt = Nt/N0
+* glm(N~as.factor(year)  + pop , poisson)
+  glm will not use in the case of only one population par species
+
+
+
+# One species
+
+## One population 
+ 
+### Without temporal stochasticity
+
+
+```{r dyn1, echo=TRUE}
+
+K <- as.list(tab_param$K)
+r <- as.list(tab_param$r)
+N_mean <- as.list(tab_param$N0)
+N_sd <- 0
+nb_sp <- nrow(tab_param)
+npop <- 1
+demographic_stocha <- "none"
+nbyear <- 30
+r_var <- 0
+r_tempvar <- 0
+model_dyn  <- "logistic"
+
+d_pop  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
+
+d_pop <- merge(d_pop,tab_param,by = c("sp","pop"))
+
+d_pop[,Nobs := N]
+
+```
+
+
+
+**Trend assessment**
+
+
+
+```{r trend1, echo=TRUE}
+
+
+d_pop[,`:=`(tx = (N-N0)/N0, dt = N/N0)]
+
+
+
+```
+
+**LPI assessment**
+
+
+
+```{r one_percent, echo=TRUE}
+
+d_lpi <- assess_lpi(d_pop)
+
+``` 
+
+
+**Comparaison** 
+
+```{r compare1}
+d_lpi2 <- d_lpi[variable == "i",.(pop,year,variable,value)]
+d_lpi2[,pop := gsub("all",1,pop)]
+setnames(d_lpi2,"value","i")
+d_trend <- d_pop[,.(pop,year,N,tx,dt,K,r,N0)]
+d_compare <- merge(d_trend,d_lpi2,by=c("pop","year"))
+
+```
+
+**1- dt**
+
+```{r gg2}
+gg <- ggplot(d_compare,aes(x=dt,y=i,colour=year)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+```{r}
+gg <- ggplot(subset(d_compare, pop == "18_1"),aes(x=dt,y=i,colour=year)) 
+gg <- gg + geom_path()
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+**2- tx**
+
+
+```{r gg1}
+gg <- ggplot(d_compare,aes(x=tx,y=i,colour=year)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_point()
+print(gg)
+
+```
+**General relation**
+
+```{r}
+md <- lm(i~ dt + I(dt^2),data = d_compare)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt,y=i))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt<=1,]
+md <- lm(i~ dt + I(dt^2),data = d_compare1)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt,y=i))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
+
+
+
+
+**Conclusion**
+
+_______
+
+### With temporal stochasticity
+
+```{r dyn2}
+
+r_tempvar <- 0
+demographic_stocha <- "poisson"
+
+d_pop  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
+
+d_pop <- merge(d_pop,tab_param,by = c("sp","pop"))
+d_pop[,Nobs := N]
+
+```
+
+Now we add a bit of temporal stochasticity with a temporal variance of growth rate parameter (r). 
+We use a variance equal to `r r_tempvar`.
+
+
+
+
+
+
+
+```{r trend2}
+d_pop[,`:=`(tx = (N-N0)/N0, dt = N/N0)]
+
+```
+
+
+
+
+
+```{r one_percent2, echo=TRUE}
+d_lpi <- assess_lpi(d_pop)
+
+``` 
+**Comparaison** 
+
+```{r compare2}
+d_lpi2 <- d_lpi[variable == "i",.(pop,year,variable,value)]
+d_lpi2[,pop := gsub("all",1,pop)]
+setnames(d_lpi2,"value","i")
+d_trend <- d_pop[,.(pop,year,N,tx,dt,K,r,N0)]
+d_compare <- merge(d_trend,d_lpi2,by=c("pop","year"))
+
+```
+
+
+**dt**
+
+```{r gg22}
+gg <- ggplot(d_compare,aes(x=dt,y=i,colour=year)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+**General relation**
+
+```{r}
+md <- lm(i~ dt + I(dt^2),data = d_compare)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt,y=i))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt<=1,]
+md <- lm(i~ dt + I(dt^2),data = d_compare1)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt,y=i))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),size = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
+
+
+** Conclusion **
+
+
+## Two populations 
+
+### With the same value of abundance 
+
+
+```{r dyn_1_2}
+
+r_tempvar <- 0
+demographic_stocha <- "none"
+d_pop1  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
+
+
+
+
+d_pop2 <- copy(d_pop1)
+d_pop1[,g := "A"]
+d_pop2[,g := "B"]
+
+
+d_pop <- rbind(d_pop1,d_pop2)
+d_pop <- merge(d_pop,tab_param,by = c("sp","pop"))
+d_pop[,`:=`(pop = paste0(pop,"_",g),sp = paste0(sp,"_",g))]                      
+d_pop[,Nobs := N]
+```
+
+
+```{r lpi_1_2, echo=FALSE}
+d_lpi <- assess_lpi(d_pop,fig="")
+
+``` 
+
+We have three ways to assess the references for several populations per species: a mean way, an additional way, and a regression way. 
+
+```{r agg_sp_2_1, echo = FALSE}
+d_sp <- d_pop[,.(N_mean = mean(N)),by=.(sp,year)]
+
+d_sp0 <- d_sp[year == 1, .(N0 = mean(N_mean)),by = sp]
+d_sp <- merge(d_sp,d_sp0,by = "sp")
+```
+
+```{r}
+
+d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0)]
+
+
+```
+
+ 
+
+
+
+```{r}
+
+d_lpi2<- d_lpi[variable == "i",.(sp,year,variable,value)]
+setnames(d_lpi2,"value","i")
+d_lpi2[,sp := as.character(sp)]
+
+d_sp[,sp := as.character(sp)]
+# d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean,N_md,tx_md,dt_md)]
+d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean)]
+d_sp[,sp_sim := gsub("_[AB]","",sp,perl = TRUE)]
+
+tab_param_sp <- unique(tab_param[,.(sp,K,r,N0,N0K)])
+tab_param_sp[,sp := as.character(sp)]
+
+d_trend <- merge(d_sp,tab_param_sp,by.x="sp_sim",by.y="sp")
+
+d_compare <- merge(d_trend,d_lpi2,by=c("sp","year"))
+
+```
+
+
+
+
+```{r }
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,colour=year)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+**General relation**
+
+```{r}
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt_mean<=1,]
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare1)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
+
+
+** Conclusion **
+
+
+
+### With demographic stocahiticity
+
+
+
+```{r dyn_1_2_2}
+
+r_tempvar <- 0
+demographic_stocha <- "poisson"
+d_pop1  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
+d_pop1[,g := "A"]
+
+d_pop2  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
+d_pop2[,g := "B"]
+
+
+
+d_pop <- rbind(d_pop1,d_pop2)
+d_pop[,sp := as.numeric(as.character((sp)))]
+d_pop <- merge(d_pop,tab_param,by = c("sp","pop"))
+d_pop[,`:=`(pop = paste0(pop,"_",g),sp = paste0(sp,"_",g))]                      
+d_pop[,Nobs := N]
+```
+
+
+```{r lpi_1_2_2, echo=FALSE}
+d_lpi <- assess_lpi(d_pop,fig="")
+
+``` 
+
+We have three ways to assess the references for several populations per species: a mean way, an additional way, and a regression way. 
+
+```{r agg_sp_2_2, echo = FALSE}
+d_sp <- d_pop[,.(N_mean = mean(N)),by=.(sp,year)]
+
+d_sp0 <- d_sp[year == 1, .(N0 = mean(N_mean)),by = sp]
+d_sp <- merge(d_sp,d_sp0,by = "sp")
+```
+
+
+```{r}
+
+d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0)]
+
+
+```
+
+ 
+
+```{r}
+
+d_lpi2<- d_lpi[variable == "i",.(sp,year,variable,value)]
+setnames(d_lpi2,"value","i")
+d_lpi2[,sp := as.character(sp)]
+
+d_sp[,sp := as.character(sp)]
+# d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean,N_md,tx_md,dt_md)]
+d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean)]
+d_sp[,sp_sim := gsub("_[AB]","",sp,perl = TRUE)]
+
+tab_param_sp <- unique(tab_param[,.(sp,K,r,N0,N0K)])
+tab_param_sp[,sp := as.character(sp)]
+
+d_trend <- merge(d_sp,tab_param_sp,by.x="sp_sim",by.y="sp")
+
+d_compare <- merge(d_trend,d_lpi2,by=c("sp","year"))
+
+```
+
+**dt**
+
+
+```{r }
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,colour=year)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+**General relation**
+
+```{r}
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt_mean<=1,]
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare1)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
+
+
+
+## Ten populations 
+
+### With demographic stochasticity
+
+
+```{r setup2,eval=FALSE, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE, echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+
+
+```{r}
+
+r_tempvar <- 0
+demographic_stocha <- "poisson"
+
+d_pop  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = 10, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
+
+d_pop[,sp := as.integer(as.character((sp)))]
+d_pop <- merge(d_pop,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
+                   
+d_pop[,Nobs := N]
+```
+
+```{r , echo=FALSE}
+d_lpi <- assess_lpi(d_pop,fig="")
+
+``` 
+
+We have three ways to assess the references for several populations per species: a mean way, an additional way, and a regression way. 
+
+```{r , echo = FALSE}
+d_sp <- d_pop[,.(N_mean = mean(N)),by=.(sp,year)]
+
+d_sp0 <- d_sp[year == 1, .(N0mean = mean(N_mean)),by = sp]
+d_sp <- merge(d_sp,d_sp0,by = "sp")
+
+
+```
+
+```{r, echo= FALSE, eval=FALSE}
+
+vsp <- unique(d_sp[,sp])
+d_pop[,year_txt := sprintf("%02d",year)]
+library(glmmTMB)
+pasdetemps <- nbyear-1
+for(asp in vsp){
+  
+    dasp <- subset(d_pop,sp == asp)
+  	formule <- as.formula("N~as.factor(pop)+ year_txt")
+    glm1 <- glm(formule,data=dasp,family=quasipoisson)
+		sglm1 <- summary(glm1)
+    coefan <- tail(matrix(coefficients(glm1)),pasdetemps)
+		## coefannee vecteur des variation d'abondance par annee back transformee
+    coefannee <- rbind(1,exp(coefan))
+    
+  
+  
+  md <- glmmTMB(N~year_txt + (1|pop),data= dasp, family = nbinom2)
+   tab_var_abond=as.data.frame(coef(summary(md))$cond)
+   setDT(tab_var_abond)
+   term <- row.names(tab_var_abond)
+    tab_var_abond[,`:=`(N_md = exp(Estimate),year =gsub("year_txt","",term))]
+    tab_var_abond[1,`:=`(year = min(d_pop[,year]))]
+    tab_var_abond[1,N_md := 1]
+    tab_var_abond[,year :=as.numeric(as.character(year))]
+    tab_var_abond <- tab_var_abond[,.(year,N_md)]
+ tab_var_abond[,N_glm := coefannee]
+
+  tab_var_abond[,sp := asp]
+
+  if(asp == vsp[1]) tab_sp <- tab_var_abond else tab_sp <- rbind(tab_sp,tab_var_abond)  
+}
+
+d_sp <- merge(d_sp,tab_sp, by = c("sp","year"))
+```
+
+```{r} 
+tab_param[,sp := as.character(sp)]
+d_sp[,sp := as.character(sp)]
+d_sp <- merge(d_sp,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
+
+```
+
+
+
+
+```{r}
+d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0,tx_md = N_md-1, dt_md = N_md,tx_glm = N_glm-1, dt_glm = N_glm)]
+
+#d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0)]
+
+
+```
+
+
+
+```{r}
+
+d_lpi2<- d_lpi[variable == "i",.(sp,year,variable,value)]
+setnames(d_lpi2,"value","i")
+d_lpi2[,sp := as.character(sp)]
+
+d_sp[,sp := as.character(sp)]
+ d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean,N_md,tx_md,dt_md,dt_glm)]
+#d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean)]
+d_sp[,sp_sim := gsub("_[AB]","",sp,perl = TRUE)]
+
+tab_param_sp <- unique(tab_param[,.(sp,K,r,N0,N0K)])
+tab_param_sp[,sp := as.character(sp)]
+
+d_trend <- merge(d_sp,tab_param_sp,by.x="sp_sim",by.y="sp")
+
+d_compare <- merge(d_trend,d_lpi2,by=c("sp","year"))
+
+```
+
+
+**dt**
+
+```{r}
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,colour=as.factor(N0K))) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+
+```{r, eval = FALSE}
+gg <- ggplot(d_compare,aes(x=dt_md,y=i,colour=N0)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+```{r, eval = FALSE}
+gg <- ggplot(d_compare,aes(x=dt_glm,y=i,colour=N0)) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+**General relation**
+
+```{r}
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt_mean<=1,]
+md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare1)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+
+
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt_mean,y=i))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
