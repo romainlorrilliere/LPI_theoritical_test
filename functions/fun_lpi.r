@@ -1,4 +1,4 @@
-assess_lpi <- function(popsamples) {
+assess_lpi <- function(popsamples,fig="") {
 
 
 ## replace zero
@@ -47,8 +47,9 @@ popsamples[,modification:=ifelse(is.na(Nobs) & !is.na(Nobs_LPI), "interpolated",
 N_prev <- popsamples[,.(pop,year,Nobs_LPI)]
 N_prev[,year := year + 1]
 setnames(N_prev,"Nobs_LPI","Nprev")
+
 popsamples <- merge(popsamples,N_prev,by=c("pop","year"))
-popsamples[,d := log(Nobs_LPI/Nprev)]
+popsamples[,d := log10(Nobs_LPI/Nprev)]
 
 
 ## species aggregation
@@ -83,13 +84,14 @@ gg_samples <- rbind(rbind(gg1,gg2),gg3)
 gg_samples <- gg_samples[!is.na(value),]
 
 
-vecshape = c("no" = 19,"interpolated" = 21 , "one percent" = 25 )
+    vecshape = c("no" = 19,"interpolated" = 21 , "one percent" = 25 )
+    if(fig == "print") {
 gg <- ggplot(gg_samples,aes(x=year,y=value,colour=sp,group=pop,shape=modification)) + facet_grid(variable~.,scales = "free_y")
 gg <- gg+ geom_line() + geom_point(fill = "white",size=2)
 gg <- gg + scale_shape_manual(values = vecshape)
 print(gg)
 ggsave(paste0("output/lpi_sim",format(Sys.time(),'_%Y%m%d_%H%M%S'),".png"),gg,width=10,height=12)
-
+}
 return(gg_samples)
 
 }
