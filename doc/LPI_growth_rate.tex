@@ -1,0 +1,109 @@
+
+\documentclass[A4,7pt]{article}
+ 
+
+\usepackage{amsmath,amsfonts,amssymb,amsthm,latexsym}
+\usepackage[english]{babel}   %% les accents dans le fichier.tex
+
+
+\begin{document}
+
+\title{What is the mathematical meaning of the species index $I_t$ of
+  LPI ?} 
+\date{\today}
+\author{Romain Lorrilliere}
+
+ \maketitle
+
+ \section{The species index $I_t$  of LPI}
+We calculate the species index $I_t$ following the Loh et al. 
+and Collen et al. \cite{loh_living_2005,collen_monitoring_2009} methods. we implement a chain method.
+
+First, we calculated the logarithm of the ratio of population 
+ measure for successive years ($d_t$)
+ \begin{equation}
+   \label{eq:dt}
+   d_t = log_{10}\left(\frac{N_t}{N_{t-1}}\right)
+ \end{equation}
+ Where $N$ is the population measure and $t$ is the year.
+
+ Then for each species we calculate de mean of $\bar{d}_t$ across all
+ the populations.
+
+ 
+ \begin{equation}
+   \label{eq:d_bar}
+   \bard{d}_t=\frac{1}{n_t}\sum_{i=1}^{n(t)}d_{it}
+ \end{equation}
+
+We finally calculate the species index $I_t$ for the year $t$ as
+following :
+\begin{equation}
+  \label{eq:I}
+  I_t = I_{t-1}10^{\bar{d}_t}
+\end{equation}
+
+
+\section{Reformulation of $I_t$ }
+
+We consider a simple case, all the populations of a species have the
+same timely constant growth rate $\lambda_i$ 
+
+\begin{equation}
+  \label{eq:lambda}
+  \lambda_i = \frac{N_{it}}{N_{it-1}}
+\end{equation}
+
+So
+
+\begin{equation}
+  \label{eq:dt2}
+   d_{it} = log_{10}\left(\lambda_i\right)
+\end{equation}
+
+
+As all population same growth rate
+
+\begin{equation}
+  \label{eq:d_bar2}
+    \bar{d}_t = d_{it} = log_{10}\left(\lambda_i\right)
+\end{equation}
+
+For $t=1$
+
+\begin{equation}
+  \label{eq:I1}
+  I_1 = 1 \times 10^{log_{10}\left(\lambda_i\right)} = \lambda_i
+\end{equation}
+
+For $t=2$
+
+\begin{equation}
+  \label{eq:I2}
+  I_2 = 1 \times 10^{log_{10}\left(\lambda_i\right)} \times
+    10^{log_{10}\left(\lambda_i\right)} =
+    \left(10^{log_{10}\left(\lambda_i\right)}\right)^2 = \lambda_i^2
+\end{equation}
+
+For $t$
+
+
+\begin{equation}
+  \label{eq:It}
+  I_t = \left(10^{log_{10}\left(\lambda_i\right)}\right)^t = \lambda_i^t
+    \end{equation}
+
+Finally we find that $I_t$ is a cumulative growth rate 
+
+\begin{equation}
+  \label{eq:It}
+  I_t  = \lambda_i^t = \left( \frac{N_t}{N_0} \right)^t
+    \end{equation}
+
+
+  
+    \bibliographystyle{apalike}
+    \bibliography{LPI}
+
+\end{document}
+
