@@ -32,7 +32,7 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
         d_pop_sp <- melt(pop_sp)
         colnames(d_pop_sp) <- c("year","pop","N")
         setDT(d_pop_sp)
-        d_pop_sp[,sp := paste0("sp",sp)]
+        d_pop_sp[,sp := paste0(sp)]
         d_pop_sp[,pop := as.factor(paste0(sp,"_",pop))]
 
 
@@ -177,17 +177,18 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
 ##' @author Romain Lorrilliere
 f_recursive_dyn_pop <- function(l,model_name = "ricker",demographic_stocha = "poisson",t=2) {
 
-    ## solution de debogage pour les cas ou r déclin et N > K 
-  if(model_name == "beverton_holt") l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]-1)+1,l$r[t,]) else l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]),l$r[t,])
-    
+    ## solution de debogage pour les cas ou r déclin et N > K
+  if(model_name == "beverton_holt") l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]-1)+1.1,l$r[t,]) else l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,])+.1,l$r[t,])
+
   l$N[t,] <-  do.call(model_name,list(r = l$r[t,],K = l$K[t,],N=l$N[t-1,]))
   l$N[t,] <- ifelse(l$N[t,] < 0 , 0, l$N[t,])
-  
+
     if(demographic_stocha == "poisson") l$N[t,] <- rpois(ncol(l$N),l$N[t,])
     else if(demographic_stocha == "round") l$N[t,] <- round(l$N[t,])
     else if(demographic_stocha == "none")l$N[t,] <-l$N[t,]
-#if(t%in% 3:6 & model_name == "logistic") browser()
-    
+
+#  if(any(l$N[t,] > 3*l$K[t,]) & model_name == "beverton_holt") browser()
+
     if(t == nrow(l$N)) return(l) else l  <-  f_recursive_dyn_pop(l,model_name,demographic_stocha,t+1)
 }
 
