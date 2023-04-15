@@ -32,7 +32,7 @@ logistic
  
  r is interpreted as an intrinsic growth rate and k as the carrying capacity 
  
- ```{r ricker}
+```{r ricker}
 
 ricker
 
@@ -142,8 +142,11 @@ gg_pops2[,r := r + 1]
 
 gg_pops <- rbind(gg_pops,gg_pops2)
 
+gg_pops0 <- gg_pops[year == 1,.(pop,model,r)]
+setnames(gg_pops0,"r","r0")
+gg_pops <- merge(gg_pops,gg_pops0,by=c("model","pop"))
 
-gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r,scales="free")
+gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r0,scales="free")
 gg <- gg  + geom_line(alpha = .5,size = 1.1)
 ggsave("output/dyn_logistic_models_without_stocha.png",width = 12,height=8)
 gg
@@ -248,13 +251,21 @@ gg_pops2[,r := r + 1]
 
 gg_pops <- rbind(gg_pops,gg_pops2)
 
+gg_pops0 <- gg_pops[year == 1,.(pop,model,r)]
+setnames(gg_pops0,"r","r0")
+gg_pops <- merge(gg_pops,gg_pops0,by=c("model","pop"))
 
-gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r,scales="free")
+
+gg <- ggplot(gg_pops, aes(x=year,y=N,colour = model)) + facet_grid(K~r0,scales="free")
 gg <- gg  + geom_line(alpha = .5,size = 1.1)
 ggsave("output/dyn_logistic_models_with_stocha.png",width = 12,height=8)
 gg
 
 ```
+
+
+*Conclusion :* Because of the strong temporal insatability of the Ricker model we will not use this model. 
+For the futur simulation we will choose the Beverton-Holt. 
 
 
 # Demographic stochasticity or not ? 
@@ -274,6 +285,8 @@ r_tempvar <- list(0,0,0,0.1)
 nb_sp <- 4
 
 tab_param <- expand.grid(K = c(10,100,1000),r = c(-0.1,0,0.1),model_dyn = c("beverton_holt","logistic"))
+print(tab_param)
+
 for (i in 1: nrow(tab_param)){
   
   K <- tab_param$K[i]
@@ -290,9 +303,9 @@ for (i in 1: nrow(tab_param)){
   d_pop_i  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = npop, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="")
 
   setDT(d_pop_i)
-  d_pop_i[,`:=`(model_dyn = model_dyn,K=K,r=r,N0=N_mean,demographic_stocha = ifelse(sp == "sp1","none",
-                                                                                    ifelse(sp=="sp2","round",
-                                                                                           ifelse(sp =="sp3","Poisson","round_r_0.1"))))]
+  d_pop_i[,`:=`(model_dyn = model_dyn,K=K,r=r,N0=N_mean,demographic_stocha = ifelse(sp == 1,"none",
+                                                                                    ifelse(sp==2,"round",
+                                                                                           ifelse(sp ==3,"Poisson","round_r_0.1"))))]
   
   if(i == 1) d_pop <- d_pop_i else d_pop <- rbind(d_pop,d_pop_i)
 
@@ -395,5 +408,5 @@ print(gg)
 
 ```
 
-
+*Point* When we picked the abundance in a Posson distribution the stochasticity seems to be to large when N is small (here K = 10)
 
