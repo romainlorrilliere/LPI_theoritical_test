@@ -16,14 +16,13 @@
  \maketitle
 
  \section{The species index $I_t$  of LPI}
-We calculate the species index $I_t$ following the Loh et al. 
-and Collen et al. \cite{loh_living_2005,collen_monitoring_2009} methods. we implement a chain method.
+We calculate the species index $I_t$ following \cite{loh_living_2005,collen_monitoring_2009} methods. we implement a chain method.
 
-First, we calculated the logarithm of the ratio of population 
+First, we calculated the logarithm of the ratio of population $i$
  measure for successive years ($d_t$)
  \begin{equation}
    \label{eq:dt}
-   d_t = log_{10}\left(\frac{N_t}{N_{t-1}}\right)
+   d_{i,t} = log_{10}\left(\frac{N_{i,t}}{N_{i,t-1}}\right)
  \end{equation}
  Where $N$ is the population measure and $t$ is the year.
 
@@ -33,7 +32,7 @@ First, we calculated the logarithm of the ratio of population
  
  \begin{equation}
    \label{eq:d_bar}
-   \bard{d}_t=\frac{1}{n_t}\sum_{i=1}^{n(t)}d_{it}
+   \bar{d}_t=\frac{1}{n_t}\sum_{i=1}^{n(t)}d_{i,t}
  \end{equation}
 
 We finally calculate the species index $I_t$ for the year $t$ as
@@ -51,14 +50,14 @@ same timely constant growth rate $\lambda_i$
 
 \begin{equation}
   \label{eq:lambda}
-  \lambda_i = \frac{N_{it}}{N_{it-1}}
+  \lambda_i = \frac{N_{i,t}}{N_{i,t-1}}
 \end{equation}
 
-So
+So 
 
 \begin{equation}
   \label{eq:dt2}
-   d_{it} = log_{10}\left(\lambda_i\right)
+   d_{i,t} = log_{10}\left(\lambda_i\right)
 \end{equation}
 
 
@@ -66,7 +65,7 @@ As all population same growth rate
 
 \begin{equation}
   \label{eq:d_bar2}
-    \bar{d}_t = d_{it} = log_{10}\left(\lambda_i\right)
+    \bar{d}_t = d_{i,t} = log_{10}\left(\lambda_i\right)
 \end{equation}
 
 For $t=1$
