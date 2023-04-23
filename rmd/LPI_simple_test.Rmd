@@ -701,11 +701,31 @@ demographic_stocha <- "poisson"
 
 d_pop  <- f_make_dyn_species(nb_sp = nb_sp,nb_pop = 10, N0_mean = N_mean,N0_var = N_sd,K=K,K_method="exact",r_mean = r, r_init_var = r_var,r_temporal_var_mean = r_tempvar,nb_year = nbyear,model_name = model_dyn,demographic_stocha = demographic_stocha, fig="print")
 
-d_pop[,sp := as.integer(as.character((sp)))]
+d_pop[,sp := as.character(sp)]
+tab_param[,sp := as.character(sp)]
 d_pop <- merge(d_pop,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
                    
 d_pop[,Nobs := N]
 ```
+
+
+Ajout de l'information de l'extinction local
+
+```{r}
+d_extinction_pop <- d_pop[year == 30 ,.(extinct =  N == 0),by = .(pop)]
+
+d_extinction <- d_pop[year == 30 ,.(extinct =  as.numeric(N == 0)),by = .(pop,sp)][,.(extinct =sum(extinct)/10),by = sp]
+d_extinction_year <- d_pop[,.(extinct_year =  as.numeric(N == 0)),by = .(pop,sp,year)][,.(extinct_year =sum(extinct_year)/10),by = .(sp,year)]
+d_extinction[,sp := as.character(sp)]
+d_extinction_year[,sp := as.character(sp)]
+
+d_pop <- merge(d_pop,d_extinction_pop,by="pop")
+
+
+
+
+```
+
 
 ```{r , echo=FALSE}
 d_lpi <- assess_lpi(d_pop,fig="")
@@ -723,7 +743,7 @@ d_sp <- merge(d_sp,d_sp0,by = "sp")
 
 ```
 
-```{r, echo= FALSE, eval=FALSE}
+```{r, echo= FALSE, eval=TRUE}
 
 vsp <- unique(d_sp[,sp])
 d_pop[,year_txt := sprintf("%02d",year)]
@@ -771,6 +791,7 @@ d_sp <- merge(d_sp,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
 
 
 ```{r}
+
 d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0,tx_md = N_md-1, dt_md = N_md,tx_glm = N_glm-1, dt_glm = N_glm)]
 
 #d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0)]
@@ -798,13 +819,38 @@ d_trend <- merge(d_sp,tab_param_sp,by.x="sp_sim",by.y="sp")
 
 d_compare <- merge(d_trend,d_lpi2,by=c("sp","year"))
 
+
+```
+
+Ajout d'information sur le nombre d'extinction 
+
+```{r}
+
+
+d_compare <- merge(d_compare,d_extinction,by=c("sp"))
+d_compare <- merge(d_compare,d_extinction_year,by=c("sp","year"))
+
+```
+
+
+**Correlation entre toutes les méthodes de calcul**
+
+- dt_md : glmmTMB
+- dt_glm : glm
+- dt_mean : variation sur la moyenne des abondances
+
+```{r}
+require(GGally)
+d_compare[,extinct_cat := as.factor(cut(extinct_year,breaks=c(0,0.01,0.5,0.8,1),include.lowest= TRUE))]
+ggpairs(d_compare[,.(i,dt_mean,dt_md,dt_glm,extinct_cat)],columns = 1:4, aes(color = extinct_cat),alpha = 0.5)
+
 ```
 
 
 **dt**
 
 ```{r}
-gg <- ggplot(d_compare,aes(x=dt_mean,y=i,colour=as.factor(N0K))) + facet_wrap(K~r,scales="free")
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,colour=extinct_cat)) + facet_wrap(K~r,scales="free")
 gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
 gg <- gg + geom_point()
 print(gg)
@@ -813,16 +859,16 @@ print(gg)
 
 
 
-```{r, eval = FALSE}
-gg <- ggplot(d_compare,aes(x=dt_md,y=i,colour=N0)) + facet_wrap(K~r,scales="free")
+```{r, eval = TRUE}
+gg <- ggplot(d_compare,aes(x=dt_md,y=i,colour=extinct_cat)) + facet_wrap(K~r,scales="free")
 gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
 gg <- gg + geom_point()
 print(gg)
 
 ```
 
-```{r, eval = FALSE}
-gg <- ggplot(d_compare,aes(x=dt_glm,y=i,colour=N0)) + facet_wrap(K~r,scales="free")
+```{r, eval = TRUE}
+gg <- ggplot(d_compare,aes(x=dt_glm,y=i,colour=extinct_cat)) + facet_wrap(K~r,scales="free")
 gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
 gg <- gg + geom_point()
 print(gg)
@@ -833,14 +879,14 @@ print(gg)
 **General relation**
 
 ```{r}
-md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare)
+md <- lm(i~ dt_mean ,data = subset(d_compare,extinct == 0))
 smd <- summary(md)
 print(smd)
 tsmd <- as.data.frame(smd$coefficients)
 coef1 <- round(tsmd[2,1],2)
 coef2 <- round(tsmd[3,1],2)
 intercept <- round(tsmd[1,1],2)
-eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+eq <- paste0("i = ",coef1,"dt + ",intercept)
 #cat(eq,"\n")
 
 R <- round(smd$adj.r.squared,2)
@@ -848,8 +894,8 @@ R <- round(smd$adj.r.squared,2)
 ```
 ```{r}
 
-gg <- ggplot(d_compare,aes(x=dt_mean,y=i))
-gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,group = extinct_cat, colour = extinct_cat, fill = extinct_cat))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x ,linewidth = 1.5, alpha = 0.8)
 gg <- gg + geom_point()
 gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
 gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
@@ -864,14 +910,14 @@ print(gg)
 
 ```{r}
 d_compare1 <- d_compare[dt_mean<=1,]
-md <- lm(i~ dt_mean + I(dt_mean^2),data = d_compare1)
+md <- lm(i~ dt_mean ,data = subset(d_compare1,extinct == 0))
 smd <- summary(md)
 print(smd)
 tsmd <- as.data.frame(smd$coefficients)
 coef1 <- round(tsmd[2,1],2)
 coef2 <- round(tsmd[3,1],2)
 intercept <- round(tsmd[1,1],2)
-eq <- paste0("i = ",coef1,"dt + ",coef2,"dt² + ",intercept)
+eq <- paste0("i = ",coef1,"dt + ",intercept)
 #cat(eq,"\n")
 
 R <- round(smd$adj.r.squared,2)
@@ -881,9 +927,9 @@ R <- round(smd$adj.r.squared,2)
 
 ```{r}
 
-gg <- ggplot(d_compare1,aes(x=dt_mean,y=i))
+gg <- ggplot(d_compare1,aes(x=dt_mean,y=i,group = extinct_cat, colour = extinct_cat, fill = extinct_cat))
 gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
-gg <- gg + geom_smooth(method = "lm", formula = y ~ x + I(x^2),linewidth = 1.5, colour = "red", alpha = 0.8)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x ,linewidth = 1.5, alpha = 0.8)
 gg <- gg + geom_point()
 gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
 gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
@@ -894,3 +940,248 @@ print(gg)
 
 
 ```
+
+
+
+########
+
+**without the local extinction trajectories**
+
+```{r}
+d_pop0 <- d_pop[extinct == FALSE,]
+
+```
+
+
+```{r , echo=FALSE}
+d_lpi0 <- assess_lpi(d_pop0,fig="")
+
+``` 
+
+We have three ways to assess the references for several populations per species: a mean way, an additional way, and a regression way. 
+
+```{r , echo = FALSE}
+d_sp0 <- d_pop0[,.(N_mean = mean(N)),by=.(sp,year)]
+
+d_sp00 <- d_sp[year == 1, .(N0mean = mean(N_mean)),by = sp]
+d_sp0 <- merge(d_sp0,d_sp00,by = "sp")
+
+
+```
+
+```{r, echo= FALSE, eval=TRUE}
+
+vsp <- unique(d_sp0[,sp])
+d_pop0[,year_txt := sprintf("%02d",year)]
+library(glmmTMB)
+pasdetemps <- nbyear-1
+for(asp in vsp){
+  
+    dasp <- subset(d_pop0,sp == asp)
+      if(length(unique(dasp[,pop])) > 2){
+  	formule <- as.formula("N~as.factor(pop)+ year_txt")
+    glm1 <- glm(formule,data=dasp,family=quasipoisson)
+		sglm1 <- summary(glm1)
+    coefan <- tail(matrix(coefficients(glm1)),pasdetemps)
+		## coefannee vecteur des variation d'abondance par annee back transformee
+    coefannee <- rbind(1,exp(coefan))
+    
+  
+
+  md <- glmmTMB(N~year_txt + (1|pop),data= dasp, family = nbinom2)
+   tab_var_abond=as.data.frame(coef(summary(md))$cond)
+   setDT(tab_var_abond)
+   term <- row.names(tab_var_abond)
+    tab_var_abond[,`:=`(N_md = exp(Estimate),year =gsub("year_txt","",term))]
+    tab_var_abond[1,`:=`(year = min(d_pop[,year]))]
+    tab_var_abond[1,N_md := 1]
+    tab_var_abond[,year :=as.numeric(as.character(year))]
+    tab_var_abond <- tab_var_abond[,.(year,N_md)]
+ tab_var_abond[,N_glm := coefannee]
+ 
+  tab_var_abond[,sp := asp]
+
+  if(asp == vsp[1]) tab_sp <- tab_var_abond else tab_sp <- rbind(tab_sp,tab_var_abond)  
+  } 
+}
+
+d_sp0 <- merge(d_sp0,tab_sp, by = c("sp","year"),all.x = TRUE)
+```
+
+```{r} 
+tab_param[,sp := as.character(sp)]
+d_sp0[,sp := as.character(sp)]
+d_sp0 <- merge(d_sp0,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
+d_nbPop <- d_pop0[,.(nb_pop = length(unique(pop))),by = "sp"]
+d_sp0 <- merge(d_sp0,d_nbPop)
+```
+
+
+
+
+```{r}
+
+d_sp0[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0,tx_md = N_md-1, dt_md = N_md,tx_glm = N_glm-1, dt_glm = N_glm)]
+
+#d_sp[,`:=`(tx_mean = (N_mean-N0)/N0, dt_mean = N_mean/N0)]
+
+
+```
+
+
+
+```{r}
+
+d_lpi20<- d_lpi0[variable == "i",.(sp,year,variable,value)]
+setnames(d_lpi20,"value","i")
+d_lpi20[,sp := as.character(sp)]
+
+d_sp0[,sp := as.character(sp)]
+ d_sp0 <- d_sp0[,.(sp,year,nb_pop,N_mean,tx_mean,dt_mean,N_md,tx_md,dt_md,dt_glm)]
+#d_sp <- d_sp[,.(sp,year,N_mean,tx_mean,dt_mean)]
+d_sp0[,sp_sim := gsub("_[AB]","",sp,perl = TRUE)]
+
+tab_param_sp <- unique(tab_param[,.(sp,K,r,N0,N0K)])
+tab_param_sp[,sp := as.character(sp)]
+
+d_trend0 <- merge(d_sp0,tab_param_sp,by.x="sp_sim",by.y="sp")
+
+d_compare0 <- merge(d_trend0,d_lpi20,by=c("sp","year"))
+
+
+```
+
+
+
+
+**Correlation entre toutes les méthodes de calcul**
+
+- dt_md : glmmTMB
+- dt_glm : glm
+- dt_mean : variation sur la moyenne des abondances
+
+```{r}
+require(GGally)
+ggpairs(d_compare0[,.(i,dt_mean,dt_md,dt_glm)],columns = 1:4, alpha = 0.5)
+
+```
+
+
+**dt**
+
+```{r}
+gg <- ggplot(d_compare0,aes(x=dt_mean,y=i,colour=as.factor(N0K))) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+
+```{r, eval = TRUE}
+gg <- ggplot(d_compare,aes(x=dt_md,y=i,colour=as.factor(N0K))) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+```{r, eval = TRUE}
+gg <- ggplot(d_compare,aes(x=dt_glm,y=i,colour=as.factor(N0K))) + facet_wrap(K~r,scales="free")
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + geom_point()
+print(gg)
+
+```
+
+
+**General relation**
+
+```{r}
+md <- lm(i~ dt_mean ,data = d_compare0)
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+```{r}
+
+gg <- ggplot(d_compare,aes(x=dt_mean,y=i,group = N0K, colour = N0K, fill = N0K))
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x ,linewidth = 1.5, alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Overall relation between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+print(gg)
+
+
+```
+
+**Relation in declining cases*
+
+```{r}
+d_compare1 <- d_compare[dt_mean<=1,]
+md <- lm(i~ dt_mean ,data = subset(d_compare1,extinct == 0))
+smd <- summary(md)
+print(smd)
+tsmd <- as.data.frame(smd$coefficients)
+coef1 <- round(tsmd[2,1],2)
+coef2 <- round(tsmd[3,1],2)
+intercept <- round(tsmd[1,1],2)
+eq <- paste0("i = ",coef1,"dt + ",intercept)
+#cat(eq,"\n")
+
+R <- round(smd$adj.r.squared,2)
+
+```
+
+
+```{r}
+
+gg <- ggplot(d_compare1,aes(x=dt_mean,y=i,group = extinct_cat, colour = extinct_cat, fill = extinct_cat))
+gg <- gg + geom_smooth(data=d_compare,method = "lm", formula = y ~ x + I(x^2),linewidth = 1.1,linetype = "dashed", colour = "#fc9272", alpha = 0.4)
+gg <- gg + geom_smooth(method = "lm", formula = y ~ x ,linewidth = 1.5, alpha = 0.8)
+gg <- gg + geom_point()
+gg <- gg + geom_point(aes(x=0,y=0), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_point(aes(x=1,y=1), size = 3, colour = "orange",alpha = 0.8)
+gg <- gg + geom_abline(slope = 1,intercept=0,colour="orange",alpha=.7,linewidth=1.1)
+gg <- gg + labs(x = "dt",y="indice sp du LPI", title = "Relation in declining cases between the i species index of LPI and dt",subtitle = paste(eq,"\n  R² =",R))
+gg <- gg + coord_cartesian(xlim = c(0,1),ylim = c(0,1))
+print(gg)
+
+
+```
+
+
+Exploration de cas : 
+
+- K = 100
+- r = 0.1
+- N0K = 0.1
+
+```{r}
+
+d_pop8 <- d_pop0[sp == "8",]
+d_compare8 <- d_compare0[sp == "8",]
+gg <- ggplot(d_pop8,aes(x=year,y = N,colour = pop,group=pop)) + geom_point() + geom_line()
+print(gg)
+
+``` 
+```{r}
+
+
+gg <- ggplot(d_compare8,aes(x=year,y = i)) + geom_point() + geom_line()
+gg <- gg + geom_point(aes(y=dt_mean),colour="blue") + geom_line(aes(y=dt_mean),colour="blue")
+print(gg)
+
+``` 
+noir : lpi
+bleu : dt_mean
