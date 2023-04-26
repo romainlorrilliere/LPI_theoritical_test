@@ -116,7 +116,7 @@ N_sd <- 0
 nb_sp <- nrow(tab_param)
 npop <- 1
 demographic_stocha <- "none"
-nbyear <- 30
+nbyear <- 50
 r_var <- 0
 r_tempvar <- 0
 model_dyn  <- "logistic"
@@ -150,7 +150,7 @@ d_pop[,`:=`(tx = (N-N0)/N0, dt = N/N0)]
 
 ```{r one_percent, echo=TRUE}
 
-d_lpi <- assess_lpi(d_pop)
+d_lpi <- assess_lpi(d_pop,fig="print")
 
 ``` 
 
@@ -261,8 +261,12 @@ print(gg)
 
 
 **Conclusion**
-
+$ I_t = d_t $
 _______
+
+
+
+
 
 ### With temporal stochasticity
 
@@ -297,7 +301,7 @@ d_pop[,`:=`(tx = (N-N0)/N0, dt = N/N0)]
 
 
 ```{r one_percent2, echo=TRUE}
-d_lpi <- assess_lpi(d_pop)
+d_lpi <- assess_lpi(d_pop,fig="print")
 
 ``` 
 **Comparaison** 
@@ -386,7 +390,7 @@ print(gg)
 
 
 ** Conclusion **
-
+$ I_t = d_t $
 
 ## Two populations 
 
@@ -536,7 +540,7 @@ print(gg)
 
 
 ** Conclusion **
-
+$ I_t = d_t $
 
 
 ### With demographic stocahiticity
@@ -649,7 +653,7 @@ print(gg)
 
 ```
 
-**Relation in declining cases*
+**Relation in declining cases**
 
 ```{r}
 d_compare1 <- d_compare[dt_mean<=1,]
@@ -681,7 +685,8 @@ print(gg)
 
 
 ```
-
+** Conclusion ** 
+$ I_t = d_t $
 
 
 ## Ten populations 
@@ -708,8 +713,8 @@ d_pop <- merge(d_pop,tab_param[,.(sp,K,r,N0,N0K)],by = c("sp"))
 d_pop[,Nobs := N]
 ```
 
+To let analysis possible we add the information of local extinction
 
-Ajout de l'information de l'extinction local
 
 ```{r}
 d_extinction_pop <- d_pop[year == 30 ,.(extinct =  N == 0),by = .(pop)]
