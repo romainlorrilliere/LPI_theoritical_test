@@ -7,7 +7,7 @@
 
 
 
-f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print",save_data=TRUE) {
+f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print",save_data=TRUE, save_param = TRUE) {
 
     require(reshape2)
     require(data.table)
@@ -26,14 +26,31 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
         if(is.list(demographic_stocha)) demographic_stocha_sp <- demographic_stocha[[sp]] else demographic_stocha_sp  <- demographic_stocha
 
 
+
         l_sp <-  f_make_pop_dyn(nb_pop = nb_pop_sp, N0_mean = N0_mean_sp,N0_var = N0_var_sp,K=K_sp,K_method=K_method_sp,r_mean = r_mean_sp, r_init_var = r_init_var_sp,r_temporal_var_mean = r_temporal_var_mean_sp,nb_year = nb_year_sp,model_name = model_name_sp,demographic_stocha = demographic_stocha_sp, fig="")
 
         pop_sp <- l_sp$N
         d_pop_sp <- melt(pop_sp)
         colnames(d_pop_sp) <- c("year","pop","N")
         setDT(d_pop_sp)
+
+        if(save_param) {
+            r_sp <- l_sp$r
+            r_sp <- melt(r_sp)
+            colnames(r_sp) <- c("year","pop","r")
+            setDT(r_sp)
+
+            K_sp <- l_sp$K
+            K_sp <- melt(K_sp)
+            colnames(K_sp) <- c("year","pop","K")
+            setDT(K_sp)
+
+            d_pop_sp <- merge(d_pop_sp,merge(r_sp,K_sp,by = c("pop","year")),by = c("pop","year"))
+        }
+
         d_pop_sp[,sp := paste0(sp)]
         d_pop_sp[,pop := as.factor(paste0(sp,"_",pop))]
+
 
 
         if(sp == 1) d_pop <- d_pop_sp else d_pop <- rbind(d_pop,d_pop_sp)
@@ -97,7 +114,6 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
 ##' @author Romain Lorrilliere
 f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print") {
 
-
     r0 <- rnorm(nb_pop,r_mean,r_init_var)
     rvar <- rnorm(nb_pop,r_temporal_var_mean,r_temporal_var_mean/10)
     pops_r <-  array(rnorm(nb_year * nb_pop,rep(r0,each=nb_year),rep(rvar,each=nb_year)),dim=c(nb_year,nb_pop))
@@ -120,6 +136,8 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
 
     pops_N <- array(NA,dim=c(nb_year,nb_pop))
     pops_N[1,] <- pops_N0
+
+
 
     l_pops <- list(N=pops_N,r=pops_r,K = pops_K)
 
@@ -202,6 +220,6 @@ ricker <- function(N,r,K)  return(N*exp(r*(1-N/K)))
 
 logistic <- function(N,r,K) return(N + (r*N*(1-N/K)))
 
-
+uniform <- function(N,r,K = NULL) return(ifelse(N+r > K,K,N+r))
 
 

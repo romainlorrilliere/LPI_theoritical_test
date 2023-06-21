@@ -1,0 +1,64 @@
+---
+title: "Which composite indicator for which data?"
+author: "Romain Lorrilliere"
+date: "2023-06-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE)
+```
+```{r source}
+library(data.table)
+library(ggplot2)
+library(ggeffects)
+
+source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
+source("c:/git/LPI_theoritical_test/functions/fun_samples.r")
+source("c:/git/LPI_theoritical_test/functions/fun_lpi.r")
+source("c:/git/LPI_theoritical_test/functions/fun_composite_indicators.r")
+
+```
+# Purpose
+There are many kinds of composite indicators to aggregate dynamic population survey data. 
+The data available to calculate these composite indicators can vary widely. They can vary over gradients of quality and quantity, for example, by the number of populations monitored, by the number of years monitored, by the completeness of the monitoring (number of years monitored over the number of years between the first and last year) and by the sampling effort (or method) affecting the probability of detection. 
+
+
+This theoretical work defines which composite indicators are the most efficient according to the data. 
+
+
+# Methods
+
+## Virtual population dynamics
+
+To get data representing simple to complex scenarios, we model the following cases: 
+
+
+We start with very simple cases
+
+* 1 species 1 pop
+* 1 species 2 pops
+* 2 species of 1 pop
+* 2 species from 2 pops
+
+Furthermore, to get data closer to natural conditions, we will also need to run scenarios with more species and more populations: 50 species with some populations between 10 and 50 
+
+
+We use several dynamics scenario 
+
+* Stability
+* all species and pop increase or decline
+  + Uniform
+  + Proportional (extinction after n time steps)
+  + Exponential (with carrying capacity)
+
+More complex cases, scenarios with compensation: 
+Compensation can be observed in abundance, where the sum of gains and losses equals zero, or in variations in abundance, where the product of variations is equal to 1. Moreover, compensation can be balanced between species, 1/2 increasing and 1/2 declining (50/50), or unbalanced 90/10 and 75/25. 
+
+Finally we have two more parameters to test : 
+
+* Without stochasticity, temporal and between populations
+* With initial abundances, large or small (25, 50, 100)
+
+
+
