@@ -61,4 +61,85 @@ Finally we have two more parameters to test :
 * With initial abundances, large or small (25, 50, 100)
 
 
+### One species without variability
 
+One species with one population with uniform dynamics
+
+```{r dyn}
+tparam <- expand.grid(model_name = "uniform",N0 = c(10,50,100), K = Inf,r_mean = c(5,0,-5),demographic_stocha = "none",nb_pop = 1)
+setDT(tparam)
+tparam[,`:=`(id_sc = paste0("1_",1:.N),nb_sp = 1)]
+
+d1 <- f_make_dyn_species(model_name = "uniform",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+
+
+setnames(d1,c("r","K"),c("r_pop","K_pop"))
+d1[,`:=`(id_sc = pop)]
+
+setkey(tparam,id_sc)
+setkey(d1,id_sc)
+d1 <- d1[tparam]
+d1[,`:=`(sp = 1,pop = 1, id_sp = paste(id_sc,1,sep="_"),id_pop = paste(id_sc,1,1,sep="_"),sc_name = "uniforme",K_sp = K_pop,r_sp = r_pop)]
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","nb_sp","nb_pop" ,"N0","K","r_mean","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+d1 <- d1[,theCol,with=FALSE]
+
+d <- copy(d1)
+
+
+```
+
+One species with one population with exponential dynamics
+
+```{r dyn}
+tparam <- expand.grid(model_name = "uniform",N0 = c(10,50,100), K = Inf,r_mean = c(0.1,0,-0.1),demographic_stocha = "none",nb_pop = 1)
+setDT(tparam)
+tparam[,K := N0 * 10]
+tparam[,`:=`(id_sc = paste0("1_",1:.N),nb_sp = 1)]
+
+
+d1 <- f_make_dyn_species(model_name = "logistic",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+
+
+setnames(d1,c("r","K"),c("r_pop","K_pop"))
+d1[,`:=`(id_sc = pop)]
+
+setkey(tparam,id_sc)
+setkey(d1,id_sc)
+d1 <- d1[tparam]
+d1[,id_sc := paste0(2,substr(id_sc,2,nchar(id_sc)))]
+
+
+d1[,`:=`(sp = 1,pop = 1, id_sp = paste(id_sc,1,sep="_"),id_pop = paste(id_sc,1,1,sep="_"),sc_name = "logisitic",K_sp = K_pop,r_sp = r_pop)]
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","nb_sp","nb_pop" ,"N0","K","r_mean","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+d1 <- d1[,theCol,with=FALSE]
+
+
+d <- rbind(d,d1)
+
+
+
+
+```
+
+One hundred species with between ten and fifty population. 
+
+```{r dyn}
+tparam <- expand.grid(model_name = "uniform",N0 = c(10,), K = Inf,r_mean = c(0),demographic_stocha = "poisson",nb_pop = 0)
+setDT(tparam)
+tparam[,`:=`(sc_id = paste0("3_",1:.N),nb_sp = 1)]
+
+d1 <- f_make_dyn_species(model_name = "uniform",demographic_stocha = "poisson",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+
+d1 <- d1[,.(sp,pop,year,N)]
+d1[,`:=`(sc_id = pop)]
+
+setkey(tparam1,sc_id)
+setkey(d1,sc_id)
+d1 <- d1[tparam1]
+d1[,`:=`(sp = paste(sc_id,sp,sep="_"),pop = paste(sc_id,pop,sep="_"))]
+
+
+
+```

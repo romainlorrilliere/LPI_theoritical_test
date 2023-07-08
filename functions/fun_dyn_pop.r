@@ -112,11 +112,17 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
 ##' @param fig ["print","save","both", ""] choose if you want produce a figure and if you want print it, save it or both.
 ##' @return a list with the populations abundance and their paramter that change in time.
 ##' @author Romain Lorrilliere
-f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print") {
+f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0,r_synchro=NULL, nb_pop = 3, nb_year = 50, model_name = "logistic",demographic_stocha = "poisson", fig = "print",format_output = "list") {
 
     r0 <- rnorm(nb_pop,r_mean,r_init_var)
     rvar <- rnorm(nb_pop,r_temporal_var_mean,r_temporal_var_mean/10)
     pops_r <-  array(rnorm(nb_year * nb_pop,rep(r0,each=nb_year),rep(rvar,each=nb_year)),dim=c(nb_year,nb_pop))
+    if(!(is.null(r_synchro))){
+        r_synchro <- rep(r_synchro, length.out = nb_year)
+        r_sync <- array(rep(r_synchro,nb_pop),dim=c(nb_year,nb_pop))
+        pops_r <- pops_r + r_sync
+    }
+
     pops_r[1,] <- r0
     pops_r <- round(pops_r,4)
     if(model_name == "beverton_holt") pops_r[pops_r < 0]  <-  0
@@ -177,7 +183,33 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
             print(gg)
 
     }
-    return(l_pops)
+
+    if(format_output == "table") {
+
+        pop <- l_pops$N
+        d_pop <- melt(pop)
+        colnames(d_pop) <- c("year","pop","N")
+        setDT(d_pop)
+
+
+        r <- l_pops$r
+        r <- melt(r)
+        colnames(r) <- c("year","pop","r")
+        setDT(r)
+
+        K <- l_pops$K
+        K <- melt(K)
+        colnames(K) <- c("year","pop","K")
+        setDT(K)
+
+        d_pop <- merge(d_pop,merge(r,K,by = c("pop","year")),by = c("pop","year"))
+
+        return(d_pop)
+
+    } else {
+
+        return(l_pops)
+        }
 }
 
 

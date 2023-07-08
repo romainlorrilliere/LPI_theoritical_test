@@ -33,3 +33,8 @@ get_g_mean <- function(DT,var = c("N","sp")){
 }
 
 
+
+
+
+
+
