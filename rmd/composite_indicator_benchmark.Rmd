@@ -11,7 +11,9 @@ knitr::opts_chunk$set(echo = FALSE,message = FALSE,warning = FALSE,error = FALSE
 ```{r source}
 library(data.table)
 library(ggplot2)
+library(glmmTMB)
 library(ggeffects)
+library(scales)
 
 source("c:/git/LPI_theoritical_test/functions/fun_dyn_pop.r")
 source("c:/git/LPI_theoritical_test/functions/fun_samples.r")
@@ -61,27 +63,37 @@ Finally we have two more parameters to test :
 * With initial abundances, large or small (25, 50, 100)
 
 
-### One species without variability
+```{r param_sim}
 
-One species with one population with uniform dynamics
+ny <- 50
+nb_pop_sync <- 10
+nb_rep_random <- 30
+
+```
+
+
+
+### One species with one population with uniform dynamics
 
 ```{r dyn}
 tparam <- expand.grid(model_name = "uniform",N0 = c(10,50,100), K = Inf,r_mean = c(5,0,-5),demographic_stocha = "none",nb_pop = 1)
 setDT(tparam)
 tparam[,`:=`(id_sc = paste0("1_",1:.N),nb_sp = 1)]
 
-d1 <- f_make_dyn_species(model_name = "uniform",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+d1 <- f_make_dyn_species(model_name = "uniform",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam),nb_year = ny)
 
 
 setnames(d1,c("r","K"),c("r_pop","K_pop"))
-d1[,`:=`(id_sc = pop)]
+d1[,`:=`(id_sc = pop, iteration = 1, id_iteration = paste0(pop,"_i1"))]
 
 setkey(tparam,id_sc)
 setkey(d1,id_sc)
 d1 <- d1[tparam]
-d1[,`:=`(sp = 1,pop = 1, id_sp = paste(id_sc,1,sep="_"),id_pop = paste(id_sc,1,1,sep="_"),sc_name = "uniforme",K_sp = K_pop,r_sp = r_pop)]
+d1[,`:=`(sp = 1,pop = 1, id_sp = paste0(id_iteration,"_s",1),id_pop = paste0(id_iteration,"_s",1,"_p",1),sc_name = "uniforme",K_sp = K_pop,r_sp = r_pop,
+         sync_cos_div = NA, sync_cos_time =  NA, sync_cos_power = NA , sync_sin_div = NA, sync_sin_time = NA, sync_sin_power = NA)]
 
-theCol <- c("id_sc","sc_name","model_name","demographic_stocha","nb_sp","nb_pop" ,"N0","K","r_mean","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","iteration","id_iteration","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
 d1 <- d1[,theCol,with=FALSE]
 
 d <- copy(d1)
@@ -89,30 +101,35 @@ d <- copy(d1)
 
 ```
 
-One species with one population with exponential dynamics
+### One species with one population with exponential dynamics
 
-```{r dyn}
-tparam <- expand.grid(model_name = "uniform",N0 = c(10,50,100), K = Inf,r_mean = c(0.1,0,-0.1),demographic_stocha = "none",nb_pop = 1)
+```{r dyn2}
+tparam <- expand.grid(model_name = "logistic",N0 = c(10,50,100), K = Inf,r_mean = c(0.1,0,-0.1),demographic_stocha = "none",nb_pop = 1)
 setDT(tparam)
 tparam[,K := N0 * 10]
 tparam[,`:=`(id_sc = paste0("1_",1:.N),nb_sp = 1)]
 
 
-d1 <- f_make_dyn_species(model_name = "logistic",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+d1 <- f_make_dyn_species(model_name = "logistic",demographic_stocha = "none",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam),nb_year = ny)
 
 
 setnames(d1,c("r","K"),c("r_pop","K_pop"))
 d1[,`:=`(id_sc = pop)]
 
+
 setkey(tparam,id_sc)
 setkey(d1,id_sc)
 d1 <- d1[tparam]
 d1[,id_sc := paste0(2,substr(id_sc,2,nchar(id_sc)))]
+d1[,`:=`(iteration = 1, id_iteration = paste0(id_sc,"_i1"))]
 
 
-d1[,`:=`(sp = 1,pop = 1, id_sp = paste(id_sc,1,sep="_"),id_pop = paste(id_sc,1,1,sep="_"),sc_name = "logisitic",K_sp = K_pop,r_sp = r_pop)]
+d1[,`:=`(sp = 1,pop = 1, id_sp = paste0(id_iteration,"_s",1),id_pop = paste0(id_iteration,"_s",1,"_p",1),sc_name = "logistic",K_sp = K_pop,r_sp = r_pop,
+         sync_cos_div = NA, sync_cos_time =  NA, sync_cos_power = NA , sync_sin_div = NA, sync_sin_time = NA, sync_sin_power = NA)]
 
-theCol <- c("id_sc","sc_name","model_name","demographic_stocha","nb_sp","nb_pop" ,"N0","K","r_mean","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","iteration","id_iteration","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
 d1 <- d1[,theCol,with=FALSE]
 
 
@@ -122,24 +139,425 @@ d <- rbind(d,d1)
 
 
 ```
+One species with several populations with exponential dynamics and temporal variations
 
-One hundred species with between ten and fifty population. 
+We create a less linear temporal series by adding a periodic process to get a more realistic data set. Here the temporal variations have two different sources. The growth rate could vary synchronously between populations or species (as observed in CES data). So, first, we add a complex periodic function to compute a part of the annual growth rate. Then, the temporal stochasticity corresponds to picking the abundance in a Poisson distribution at each time.
 
-```{r dyn}
-tparam <- expand.grid(model_name = "uniform",N0 = c(10,), K = Inf,r_mean = c(0),demographic_stocha = "poisson",nb_pop = 0)
+
+First the periodic process
+
+
+
+```{r sync_param}
+tparam <- expand.grid(model_name = "logistic",N0 = c(10,50,100), K = Inf,r_mean = c(0.1,0,-0.1),demographic_stocha = "none",nb_pop = nb_pop_sync)
 setDT(tparam)
-tparam[,`:=`(sc_id = paste0("3_",1:.N),nb_sp = 1)]
+tparam[,K := N0 * 10]
+tparam[,`:=`(id_sc = paste0("1_",1:.N),nb_sp = 1)]
 
-d1 <- f_make_dyn_species(model_name = "uniform",demographic_stocha = "poisson",r_mean = tparam$r_mean,N0_mean = tparam$N0,K = tparam$K,nb_pop = nrow(tparam))
+sc <- 1
+it <- 1
 
-d1 <- d1[,.(sp,pop,year,N)]
-d1[,`:=`(sc_id = pop)]
 
-setkey(tparam1,sc_id)
-setkey(d1,sc_id)
-d1 <- d1[tparam1]
-d1[,`:=`(sp = paste(sc_id,sp,sep="_"),pop = paste(sc_id,pop,sep="_"))]
+idsc <- paste0("3_",sc)
+idit <- paste0(idsc,"_i",it)
+idsp <- paste0(idit,"_s1")
+```
+
+
+```{r sync, echo=TRUE}
+
+d_sync <- data.table(year = seq(from=1,to= ny, by = 1))
+
+d_sync[,`:=`(id_iteration = idit, p_cos_div = round( runif(1,0,1),2), p_cos_time = round( runif(1,1,4),1), p_cos_power = round(runif(1,1,3),2),
+             p_sin_div = round( runif(1,0,1),2), p_sin_time = round( runif(1,1,4),1), p_sin_power = round(runif(1,1,3),2))]
+
+
+d_sync[, r_periodic := round(rescale(cos(year *  p_cos_div) + 
+                                       cos(year *p_cos_time) + 
+                                       cos(year ^ p_cos_power) + 
+                                       sin(year *  p_sin_div) + 
+                                       sin(year *p_sin_time) + 
+                                       sin(year^p_sin_power),
+                                     to=c(-0.25,0.25)),
+                             3)]
+print(head(d_sync))
+r_sync<- d_sync[,r_periodic]
+
+d_sync_all <- copy(d_sync)
+
+```
+
+This process creates an additional value of growth rate balanced around 0. 
+
+The summary : 
+
+
+```{r sync_fig}
+
+print(summary(r_sync))
+
+gg <- ggplot(data= d_sync,aes(x=r_periodic)) + geom_histogram() + labs(x = "periodic additionnal effect on growht rate")
+print(gg)
+
+
+
+
+gg <- ggplot(data=d_sync, aes(x = year, y = r_periodic))+ geom_line() + geom_point()
+eq_txt <- paste0("cos(",d_sync$p_cos_div[1]," * t) + cos(",d_sync$p_cos_time[1]," * t) + cos(t^",d_sync$p_cos_power[1],") + sin(",d_sync$p_sin_div[1]," * t) + sin(",d_sync$p_sin_time[1]," * t) + sin(t^",d_sync$p_sin_power[1],")")
+gg <- gg +  labs(x = "year", y = "periodic additionnal effect on growth rate",title = idit, subtitle = eq_txt)
+
+print(gg)
 
 
 
 ```
+
+
+
+
+
+Then, at each time step, these values of the periodic effect of growth rate are now added to the growth rate, and we simulate `r nb_pop_sync` population abundance trajectories.
+
+
+```{r dyn_sync}
+
+
+di <-  f_make_pop_dyn(nb_pop = nb_pop_sync, N0_mean = tparam$N0[sc],N0_var = 0,K=tparam$K[sc],K_method="exact",r_mean = tparam$r_mean[sc], r_init_var = 0,r_temporal_var_mean = 0,r_synchro = r_sync,nb_year = ny,model_name = "logistic",demographic_stocha = "poisson", fig="print",format_output = "table")
+
+setDT(di)
+setnames(di,c("r","K"),c("r_pop","K_pop"))
+
+
+di[,`:=`(id_sc =idsc,sc_name = "logistic_sync",model_name = "logistic",demographic_stocha = "poisson",
+             sync_cos_div = d_sync$p_cos_div[1], sync_cos_time =  d_sync$p_cos_time[1], sync_cos_power = d_sync$p_cos_power[1] ,
+             sync_sin_div = d_sync$p_sin_div[1], sync_sin_time = d_sync$p_sin_time[1], sync_sin_power = d_sync$p_sin_power[1],
+             nb_sp = 1, nb_pop = tparam$nb_pop[sc], N0 = tparam$N0[sc],K = tparam$N0[sc],r_mean = tparam$r_mean[sc],
+             iteration = it,id_iteration = idit, id_sp = idsp, sp = 1, id_pop = paste0(idsp,"_p",pop),K_sp = K_pop,r_sp = r_pop)]
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","iteration","id_iteration","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
+di <- di[,theCol,with=FALSE]
+
+
+d <- rbind(d,di)
+
+for(sc in 2:nrow(tparam)) {
+  
+  di <-  f_make_pop_dyn(nb_pop = nb_pop_sync, N0_mean = tparam$N0[sc],N0_var = 0,K=tparam$K[sc],K_method="exact",r_mean = tparam$r_mean[sc], r_init_var = 0,r_temporal_var_mean = 0,r_synchro = r_sync,nb_year = ny,model_name = "logistic",demographic_stocha = "poisson", fig="",format_output = "table")
+
+setDT(di)
+setnames(di,c("r","K"),c("r_pop","K_pop"))
+
+idsc <- paste0("3_",sc)
+idit <- paste0(idsc,"_i",it)
+idsp <- paste0(idit,"_s1")
+di[,`:=`(id_sc =idsc,sc_name = "logistic_sync",model_name = "logistic",demographic_stocha = "poisson",
+             sync_cos_div = d_sync$p_cos_div[1], sync_cos_time =  d_sync$p_cos_time[1], sync_cos_power = d_sync$p_cos_power[1] ,
+             sync_sin_div = d_sync$p_sin_div[1], sync_sin_time = d_sync$p_sin_time[1], sync_sin_power = d_sync$p_sin_power[1],
+             nb_sp = 1, nb_pop = tparam$nb_pop[sc], N0 = tparam$N0[sc],K = tparam$K[sc],r_mean = tparam$r_mean[sc],
+             iteration = it,id_iteration = idit, id_sp = idsp, sp = 1, id_pop = paste0(idsp,"_p",pop),K_sp = K_pop,r_sp = r_pop)]
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","iteration","id_iteration","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
+di <- di[,theCol,with=FALSE]
+
+
+d <- rbind(d,di)
+  
+  
+}
+
+
+```
+
+
+```{r sync_loop}
+
+for(it in 2:nb_rep_random) {
+  
+  idit <- paste0(idsc,"_i",it)
+idsp <- paste0(idit,"_s1")
+
+d_sync <- data.table(year = seq(from=1,to= ny, by = 1))
+
+d_sync[,`:=`(id_iteration = idit,p_cos_div = round( runif(1,0,1),2), p_cos_time = round( runif(1,1,4),1), p_cos_power = round(runif(1,1,3),2),
+             p_sin_div = round( runif(1,0,1),2), p_sin_time = round( runif(1,1,4),1), p_sin_power = round(runif(1,1,3),2))]
+
+
+d_sync[, r_periodic := round(rescale(cos(year *  p_cos_div) + 
+                                       cos(year *p_cos_time) + 
+                                       cos(year ^ p_cos_power) + 
+                                       sin(year*  p_sin_div) + 
+                                       sin(year *p_sin_time) + 
+                                       sin(year ^p_sin_power),
+                                     to=c(-0.25,0.25)),
+                             3)]
+
+r_sync<- d_sync[,r_periodic]
+
+d_sync_all <- rbind(d_sync_all,d_sync)
+
+
+for(sc in 1:nrow(tparam)) {
+  
+  di <-  f_make_pop_dyn(nb_pop = nb_pop_sync, N0_mean = tparam$N0[sc],N0_var = 0,K=tparam$K[sc],K_method="exact",r_mean = tparam$r_mean[sc], r_init_var = 0,r_temporal_var_mean = 0,r_synchro = r_sync,nb_year = ny,model_name = "logistic",demographic_stocha = "poisson", fig="",format_output = "table")
+
+setDT(di)
+setnames(di,c("r","K"),c("r_pop","K_pop"))
+
+idsc <- paste0("3_",sc)
+idit <- paste0(idsc,"_i",it)
+idsp <- paste0(idit,"_s1")
+di[,`:=`(id_sc =idsc,sc_name = "logistic_sync",model_name = "logistic",demographic_stocha = "poisson",
+             sync_cos_div = d_sync$p_cos_div[1], sync_cos_time =  d_sync$p_cos_time[1], sync_cos_power = d_sync$p_cos_power[1] ,
+             sync_sin_div = d_sync$p_sin_div[1], sync_sin_time = d_sync$p_sin_time[1], sync_sin_power = d_sync$p_sin_power[1],
+             nb_sp = 1, nb_pop = tparam$nb_pop[sc], N0 = tparam$N0[sc],K = tparam$K[sc],r_mean = tparam$r_mean[sc],
+             iteration = it,id_iteration = idit, id_sp = idsp, sp = 1, id_pop = paste0(idsp,"_p",pop),K_sp = K_pop,r_sp = r_pop)]
+
+theCol <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","iteration","id_iteration","id_sp", "sp", "K_sp","r_sp", "id_pop" ,"pop" ,"K_pop","r_pop" ,"year","N")
+
+di <- di[,theCol,with=FALSE]
+
+
+d <- rbind(d,di)
+  
+  
+}
+
+  
+}
+
+
+```
+
+```{r plot_all_sync}
+
+gg <- ggplot(d_sync_all,aes(x=year,y=r_periodic))+ facet_wrap(.~id_iteration)
+gg <- gg + geom_line()
+gg
+
+```
+
+```{r sum_trajectories}
+nbsc <- length(unique(d$id_sc))
+nbit <- length(unique(d$id_iteration))
+
+
+```
+
+Finally we get `r nbit` trajectories of `r nbsc` different scenarios. 
+
+
+```{r trajectories}
+
+
+gg <- ggplot(data = d, aes(x =year, y = N, group = id_pop)) + geom_line(alpha = 0.6) + facet_wrap(.~id_sc,scale="free_y")
+gg
+
+```
+
+## species abundance variations
+
+
+For each species, we could aggregate the population abundances in different ways : 
+
+ - the median and various quantile
+ - the arithmetic mean 
+ - the geometric mean
+ 
+ 
+```{r model_glm_trend}
+d_glm_trend_init <- data.frame(id_iteration = unique(d[,id_iteration]),trend=99.99,sd=99.99,ICinf=99.99,ICsup=99.99)
+
+vec_serie <- c("all","start_10","mid_10","end_10")
+
+d_glm_trend <- d_glm_trend_init
+colanmes(d_glm_trend_s) <- paste(colnames(d_glm_trend_init,"all",sep="_"))
+                                   
+
+for(s in vec_serie[2:4]) {
+  d_glm_trend_s <- d_glm_trend_init
+  colanmes(d_glm_trend_s) <- paste(colnames(d_glm_trend_init,s,sep="_"))
+  d_glm_trend <- merge(d_glm_trend,d_glm_trend_s,by="id_iteration")
+} 
+
+
+setDT(d_glm_trend)
+for(i in d_glm_trend[,id_iteration]) {
+  cat("\n",i,": ")
+  for(s in vec_serie) {
+    cat(s," ")
+    if(s == "all") {
+  di <- d[id_iteration == i,]
+    } else if(s == "start_10") {
+      di <- d[id_iteration == i & year < 11,]
+    } else if(s =="mid_10") {
+      di <- d[id_iteration == i & year >= (mean(year)-5 & year <= mean(year) + 5),]
+    } else {
+      di <- d[id_iteration == i & year >= max(year) - 10,]
+    }
+    
+  nbpop <- di[1,nb_pop]
+  if(nbpop == 1 ){
+    #md for only one pop
+    md <- try(glm(N~year, data = di, family= "quasipoisson"),silent = TRUE)  
+    if(class(md)[1] != "try-error") {
+      if(nbpop == 1 ){
+      smd <- as.data.frame(summary(md)$coefficients) 
+      } else {
+        smd <- as.data.frame(coef(summary(md))$cond)
+      }
+      
+      trend <- exp(smd[2,1])
+      sd <- exp(smd[2,2])
+      ci <- try(confint(md),silent = TRUE) 
+      if(class(md)[1] != "try-error") {
+         ICinf <- exp(ci[1,2])
+      INsup <- exp(ci[2,2])
+      } else {
+         ICinf <- NA
+      INsup <- NA
+      }
+    } else {
+       trend <- NA
+      sd <- NA
+      ICinf <- NA
+      INsup <- NA
+    }
+  d_glm_trend[id_iteration == i, paste0("trend_",s) := trend]
+  d_glm_trend[id_iteration == i, paste0("sd_",s) := sd]
+  d_glm_trend[id_iteration == i, paste0("ICinf_",s) := ICinf]
+  d_glm_trend[id_iteration == i,paste0("ICsup_",s) := ICsup]
+
+      
+    }
+  } 
+
+}
+  
+ fwrite(d_glm_trend,"output/trend_ref.csv")
+ print(head(d_glm_trend))
+ 
+ 
+```
+ 
+ 
+```{r model_gam_tot}
+for(i in unique(d[,id_iteration])) {
+  di <- d[id_iteration == i,]
+  nbpop <- di[1,nb_pop]
+  if(nb_pop ==1 ){
+    md <- gam(N~year, data = di, family= poisson)  
+    
+  }
+  
+  
+  
+}
+
+
+```
+
+
+```{r summmary} 
+theCol_pop <- c("id_sc","sc_name","model_name","demographic_stocha","sync_cos_div", "sync_cos_time" , "sync_cos_power"  , "sync_sin_div" , "sync_sin_time" , "sync_sin_power", "nb_sp","nb_pop" ,"N0","K","r_mean","id_iteration","id_sp", "id_pop")
+
+dparam_pop <- unique(d[,theCol_pop,with=FALSE])
+
+theCol_sc <- c("id_sc","sc_name","model_name","demographic_stocha","nb_sp","nb_pop" ,"N0","K","r_mean")
+
+dparam_sc <- unique(d[,theCol_sc,with=FALSE])
+
+dudu <- d[,theCol_sc,with=FALSE]
+d_Nsp <- d[,.(N_tot=sum(N),N_med = median(N),N_25 = quantile(N,.25), N_75 = quantile(N,.75), N_Ar_mean = round(mean(N),2), N_Geom_mean = round(exp(mean(log(N+N0*0.01))),2)),by = .(id_sc, id_iteration,year, sc_name)]
+
+print(head(d_Nsp))
+
+
+dl_Nsp <- melt(d_Nsp,id.vars = c("id_sc","id_iteration","year","sc_name"),mesure.vars = c("N_tot","N_med","N_25","N_75","N_Ar_mean","N_Geom_mean"))
+gg <- ggplot(data = dl_Nsp, aes(x =year, y = value, group = id_iteration,colour = sc_name)) + geom_line(alpha = 0.8) + facet_wrap(.~variable,scale = "free_y")
+gg
+
+```
+
+Then we ave several way to assess the indices of abundance variations : 
+Firstly with the previously aggregated data
+ - Bray-Curtis
+ - log-linear model with year as factor (glm)
+ - additif model (GAM)
+ 
+ 
+
+```{r N0}
+
+d_Nsp_0 <- d_Nsp[year == 1 ,.(id_iteration,N_tot,N_med,N_25,N_75,N_Ar_mean,N_Geom_mean)]
+
+var_names <- c("N_tot","N_med","N_25","N_75","N_Ar_mean","N_Geom_mean")
+
+setnames(d_Nsp_0,var_names, paste0(var_names,"_0"))
+setkey(d_Nsp_0,id_iteration)
+
+setkey(d_Nsp,id_iteration)
+
+d_Nsp <- merge(d_Nsp,d_Nsp_0)
+
+
+
+
+
+```
+
+```{r dN}
+
+
+for(v in var_names){
+  N <- d_Nsp[,v,with = FALSE]
+  N0 <- d_Nsp[,paste0(v,"_0"),with=FALSE]
+  d_Nsp[,X := N/N0]
+  setnames(d_Nsp,"X",paste0("dN_",v))
+}
+  
+
+
+```
+
+
+
+```{r dN_analysis}
+d_dN <- d_Nsp[,.(id_sc,id_iteration,year,dN_N_tot,dN_N_med,dN_N_25,dN_N_75,dN_N_Ar_mean,dN_N_Geom_mean)]
+d_dN <- melt(d_dN,id.vars = c("id_sc","id_iteration","year"))
+d_dN <- merge(d_dN,dparam_sc,by="id_sc")
+setDT(d_dN)
+d_dN_log <- d_dN[model_name != "uniform",]
+d_dN_log[,id_combi := paste(N0,K,sep="_")]
+
+setorder(d_dN_log,id_iteration,year)
+gg <- ggplot(d_dN_log,aes(x = year, y = value, group = id_iteration, colour = variable)) + geom_line() + facet_grid(id_combi~r_mean,scales = "free")
+print(gg)
+
+```
+
+
+
+
+
+
+
+```{r abundance_variation_bray-curtis}
+
+
+for(v in var_names){
+  N <- d_Nsp[,v,with = FALSE]
+  N0 <- d_Nsp[,paste0(v,"_0"),with=FALSE]
+  d_Nsp[,X := get_braycurtis_tot(N,N0)]
+  setnames(d_Nsp,"X",paste0("BC_",v))
+}
+  
+
+
+
+```
+
+
+
+

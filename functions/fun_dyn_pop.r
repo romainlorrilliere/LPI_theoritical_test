@@ -7,7 +7,7 @@
 
 
 
-f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0, nb_pop = 3, nb_year = 50, model_name = "ricker",demographic_stocha = "poisson", fig = "print",save_data=TRUE, save_param = TRUE) {
+f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mean = 0.01,r_init_var = 0, r_temporal_var_mean = 0,r_synchro=NULL, nb_pop = 3, nb_year = 50, model_name = "logistic",demographic_stocha = "poisson", fig = "print",save_data=TRUE, save_param = TRUE) {
 
     require(reshape2)
     require(data.table)
@@ -27,24 +27,25 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
 
 
 
-        l_sp <-  f_make_pop_dyn(nb_pop = nb_pop_sp, N0_mean = N0_mean_sp,N0_var = N0_var_sp,K=K_sp,K_method=K_method_sp,r_mean = r_mean_sp, r_init_var = r_init_var_sp,r_temporal_var_mean = r_temporal_var_mean_sp,nb_year = nb_year_sp,model_name = model_name_sp,demographic_stocha = demographic_stocha_sp, fig="")
+        l_sp <-  f_make_pop_dyn(nb_pop = nb_pop_sp, N0_mean = N0_mean_sp,N0_var = N0_var_sp,K=K_sp,K_method=K_method_sp,r_mean = r_mean_sp, r_init_var = r_init_var_sp,r_temporal_var_mean = r_temporal_var_mean_sp,r_synchro, nb_year = nb_year_sp,model_name = model_name_sp,demographic_stocha = demographic_stocha_sp, fig="")
 
         pop_sp <- l_sp$N
-        d_pop_sp <- melt(pop_sp)
-        colnames(d_pop_sp) <- c("year","pop","N")
+        d_pop_sp <- cbind(expand.grid(year = 1:nrow(pop_sp), pop = 1:ncol(pop_sp)), N = as.vector(pop_sp))
         setDT(d_pop_sp)
+        
 
         if(save_param) {
             r_sp <- l_sp$r
-            r_sp <- melt(r_sp)
-            colnames(r_sp) <- c("year","pop","r")
+          
+            r_sp <- cbind(expand.grid(year = 1:nrow(r_sp), pop = 1:ncol(r_sp)), r = as.vector(r_sp))
             setDT(r_sp)
+            
+         
 
             K_sp <- l_sp$K
-            K_sp <- melt(K_sp)
-            colnames(K_sp) <- c("year","pop","K")
+            K_sp <- cbind(expand.grid(year = 1:nrow(K_sp), pop = 1:ncol(K_sp)), K = as.vector(K_sp))
             setDT(K_sp)
-
+            
             d_pop_sp <- merge(d_pop_sp,merge(r_sp,K_sp,by = c("pop","year")),by = c("pop","year"))
         }
 
@@ -65,9 +66,9 @@ f_make_dyn_species <- function(nb_sp=1,N0_mean=NULL, N0_var = 0,K=100,K_method="
         require(ggplot2)
 
 
-
         if(nb_sp> 10) d_pop[,sp := as.numeric(sp)]
-        gg <- ggplot(data = d_pop,mapping=aes(x=year,y=N,colour=sp,group=pop,shape = (N==0)))
+d_pop[,extinction := N== 0]
+        gg <- ggplot(data = d_pop,mapping=aes(x=year,y=N,colour=sp,group=pop,shape = extinction))
      ##   gg <- gg + geom_hline(yintercept = 0,size=2,colour="white")
         gg <- gg + geom_point() + geom_line()
         gg <- gg + scale_shape_manual(values=c(19,21))
@@ -118,6 +119,7 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
     rvar <- rnorm(nb_pop,r_temporal_var_mean,r_temporal_var_mean/10)
     pops_r <-  array(rnorm(nb_year * nb_pop,rep(r0,each=nb_year),rep(rvar,each=nb_year)),dim=c(nb_year,nb_pop))
     if(!(is.null(r_synchro))){
+   
         r_synchro <- rep(r_synchro, length.out = nb_year)
         r_sync <- array(rep(r_synchro,nb_pop),dim=c(nb_year,nb_pop))
         pops_r <- pops_r + r_sync
@@ -228,7 +230,7 @@ f_make_pop_dyn <- function(N0_mean=NULL, N0_var = 0,K=100,K_method="exact",r_mea
 f_recursive_dyn_pop <- function(l,model_name = "ricker",demographic_stocha = "poisson",t=2) {
 
     ## solution de debogage pour les cas ou r déclin et N > K
-  if(model_name == "beverton_holt") l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,]-1)+1.1,l$r[t,]) else l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,],abs(l$r[t,])+.1,l$r[t,])
+  if(model_name == "beverton_holt") l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,] & l$r[t,] < 1 ,abs(l$r[t,]-1)+1.01,l$r[t,]) else l$r[t,]<- ifelse(l$N[t-1,] > l$K[t-1,] & l$r[t,] < 0,abs(l$r[t,])+.01,l$r[t,])
 
   l$N[t,] <-  do.call(model_name,list(r = l$r[t,],K = l$K[t,],N=l$N[t-1,]))
   l$N[t,] <- ifelse(l$N[t,] < 0 , 0, l$N[t,])

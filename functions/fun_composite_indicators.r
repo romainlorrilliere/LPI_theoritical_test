@@ -21,7 +21,7 @@ get_braycurtis_tot <- function(N,N0) {
 get_a_mean <- function(DT,var = c("N","sp")){
     DTloc <- copy(DT)
     setnames(DTloc,var,c("x","sp"))
-    retunr(mean(DTloc[,.(sum = sum(x)),by=sp][,sum],na.rm = TRUE))
+    return(mean(DTloc[,.(sum = sum(x)),by=sp][,sum],na.rm = TRUE))
 }
 
 
@@ -29,7 +29,7 @@ get_a_mean <- function(DT,var = c("N","sp")){
 get_g_mean <- function(DT,var = c("N","sp")){
     DTloc <- copy(DT)
     setnames(DTloc,var,c("x","sp"))
-    retunr(mean(log(DTloc[,.(sum = sum(x)),by=sp][,sum]),na.rm = TRUE))
+    return(mean(log(DTloc[,.(sum = sum(x)),by=sp][,sum]),na.rm = TRUE))
 }
 
 
